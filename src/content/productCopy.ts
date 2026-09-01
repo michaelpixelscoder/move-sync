@@ -13,7 +13,9 @@ export const productCopy = {
   appName: 'Move Sync',
   navigation: {
     videos: 'Videos',
+    collections: 'Collections',
     backup: 'Backup',
+    settings: 'Settings',
   },
   library: {
     heading: 'Videos',
@@ -50,6 +52,21 @@ export const productCopy = {
       message: 'Allow video-library access, then refresh this phone. Collection names and counts come directly from the device.',
       action: 'Refresh this phone',
     },
+  },
+  collections: {
+    heading: 'Collections',
+    loading: 'Loading your collections…',
+    empty: {
+      title: 'No collections yet',
+      message: 'Collections you back up from your phone will appear here.',
+    },
+  },
+  settings: {
+    heading: 'Settings',
+    backupTitle: 'Automatic backup',
+    backupMessage: 'Choose collections and review your backup status.',
+    deviceTitle: 'This device',
+    deviceMessage: 'Your Move Sync library is protected with secure device storage.',
   },
   player: {
     backToVideos: 'Back to videos',
