@@ -42,21 +42,21 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **2.7 Load and apply the typography system:** Configure `expo-font`, define fallback behavior for web/native, and apply the S8 page-title/section-title/card-title/meta/status hierarchy without tiny all-caps eyebrow labels.
   - [x] **2.8 Codify the visual composition rules:** Use fewer borders, let spacing create hierarchy, reserve color for meaning, and keep media as the visual hero; add these rules to component review criteria. [Visual: S8]
 
-- **[ ] Initiative 3: Create trustworthy storage, backup, and library data models**
+- **[x] Initiative 3: Create trustworthy storage, backup, and library data models**
   **Brief:** Give the redesigned UI reliable data for answering “Is this safe?”, “Where is it stored?”, and “How much space can I reclaim?”. The visual direction requires local and cloud availability to coexist, clear capacity/reclaimable-space summaries, and durable activity information. [Visual: S4, S5, S7]
   **Tasks:**
-  - [ ] **3.1 Introduce a user-facing storage-state model:** Derive `uploading`, `backed up on cloud`, `on device and cloud`, `cloud only`, `waiting`, and `failed` from authoritative media fields rather than rendering raw backend sync states. [Visual: S5]
-    - [ ] 3.1.1 Keep the internal transfer state separate from the user-facing storage state.
-    - [ ] 3.1.2 Only expose “safe to remove” after Convex Storage has an authoritative completed upload.
-    - [ ] 3.1.3 Model cloud and local availability independently so one video can simultaneously display `Backed up to cloud` and `On this device`, each with its own reassurance. [Visual: S5]
-  - [ ] **3.2 Add library summary queries:** Return total cloud video count/bytes, safely backed-up count/bytes, local copies eligible for removal, failed uploads, and active uploads without fetching and reducing the first 200 media rows on the client. [Visual: S4, S7]
-    - [ ] 3.2.1 Define the authoritative source and entitlement rules for cloud capacity before rendering a `used of total` storage meter; omit the meter until that data is real. [Visual: S1, S2, S4]
-  - [ ] **3.3 Replace the fixed 200-item query:** Add paginated library queries and update the UI to load incrementally so the redesign supports hundreds or thousands of videos.
-  - [ ] **3.4 Prepare indexed discovery queries:** Support title/filename, date range, collection, device, duration, and upload-state filtering with server-side indexes or search indexes appropriate to each field.
-  - [ ] **3.5 Normalize collection relationships:** Replace reliance on the denormalized `collectionName` string with stable collection relationships while preserving the original device album identity.
-  - [ ] **3.6 Persist backup activity and recovery data:** Store enough information for waiting, progress, retry, completion, last successful backup, and failure summaries to survive screen changes or app restarts. [Visual: S4, S7]
-  - [ ] **3.7 Model device ownership where needed:** Add device identity/name and last-seen/last-backup metadata before building a web `Devices & backup` view; avoid implying cross-device state that the current per-device client key cannot prove.
-  - [ ] **3.8 Extend backend tests:** Cover ownership, pagination, aggregates, storage-state transitions, retry/error behavior, collection relationships, and the invariant that local deletion is never offered before a verified cloud copy exists.
+  - [x] **3.1 Introduce a user-facing storage-state model:** Derive `uploading`, `backed up on cloud`, `on device and cloud`, `cloud only`, `waiting`, and `failed` from authoritative media fields rather than rendering raw backend sync states. [Visual: S5]
+    - [x] 3.1.1 Keep the internal transfer state separate from the user-facing storage state.
+    - [x] 3.1.2 Only expose “safe to remove” after Convex Storage has an authoritative completed upload.
+    - [x] 3.1.3 Model cloud and local availability independently so one video can simultaneously display `Backed up to cloud` and `On this device`, each with its own reassurance. [Visual: S5]
+  - [x] **3.2 Add library summary queries:** Return total cloud video count/bytes, safely backed-up count/bytes, local copies eligible for removal, failed uploads, and active uploads without fetching and reducing the first 200 media rows on the client. [Visual: S4, S7]
+    - [x] 3.2.1 Define the authoritative source and entitlement rules for cloud capacity before rendering a `used of total` storage meter; omit the meter until that data is real. [Visual: S1, S2, S4]
+  - [x] **3.3 Replace the fixed 200-item query:** Add paginated library queries and update the UI to load incrementally so the redesign supports hundreds or thousands of videos.
+  - [x] **3.4 Prepare indexed discovery queries:** Support title/filename, date range, collection, device, duration, and upload-state filtering with server-side indexes or search indexes appropriate to each field.
+  - [x] **3.5 Normalize collection relationships:** Replace reliance on the denormalized `collectionName` string with stable collection relationships while preserving the original device album identity.
+  - [x] **3.6 Persist backup activity and recovery data:** Store enough information for waiting, progress, retry, completion, last successful backup, and failure summaries to survive screen changes or app restarts. [Visual: S4, S7]
+  - [x] **3.7 Model device ownership where needed:** Add device identity/name and last-seen/last-backup metadata before building a web `Devices & backup` view; avoid implying cross-device state that the current per-device client key cannot prove.
+  - [x] **3.8 Extend backend tests:** Cover ownership, pagination, aggregates, storage-state transitions, retry/error behavior, collection relationships, and the invariant that local deletion is never offered before a verified cloud copy exists.
 
 - **[ ] Initiative 4: Redesign the Videos library around the content**
   **Brief:** Turn the current centered three-column dashboard into the wide, calm library shown in S4: video-led cards, clear browse scopes, search/filter/sort from the start, and a compact activity signal that appears only when work is active.

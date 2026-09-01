@@ -8,6 +8,12 @@
 - Keep a video thumbnail or playback surface as the first visual priority. Metadata is compact and supplemental; page titles, section titles, card titles, meta, and status use the shared type hierarchy.
 - All interactive controls retain a 44px touch target, an accessible label, and visible pressed/hover or focus feedback. Motion uses the shared 150–250ms durations and must remain optional.
 
+## Storage-data review criteria
+
+- UI storage labels come from the server-derived storage model, never raw transfer state. Cloud and local availability are independent facts.
+- Offer local removal only when `safeToRemoveLocal` is true; that flag requires a verified Convex Storage object.
+- Do not show a `used of total` capacity meter until an entitlement source defines the plan limit. The library summary intentionally exposes verified usage and reclaimable bytes only.
+
 - Source visual truth: user-provided desktop screenshots in `/home/michael/t3code/data/userdata/attachments/ba2bd92f-a9be-4f34-8432-7dc3eabe1a35-*.png`.
 - Design direction: sober, professional desktop workspace; eliminate the stretched mobile-navigation treatment and uncontrolled desktop spacing.
 - Implementation evidence: `artifacts/desktop-library.png`, `artifacts/desktop-autosync.png`, `artifacts/web-player.png`, and `artifacts/mobile-library.png`.

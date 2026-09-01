@@ -1,4 +1,4 @@
-import type { SyncState } from '../types/domain';
+import type { StorageState, TransferState } from '../types/domain';
 
 /**
  * Storage terminology:
@@ -101,9 +101,13 @@ export type LibraryScope = keyof typeof productCopy.library.scopes;
  * - The player details surface owns file metadata, collection, storage location,
  *   and secondary or destructive actions.
  */
-export function backupStateLabel(state: SyncState, error?: string | null): string {
-  if (state === 'synced') return productCopy.storage.backedUp;
+export function storageStateLabel(state: StorageState, error?: string | null): string {
+  if (state === 'backedUp' || state === 'onDeviceAndCloud') return productCopy.storage.backedUp;
+  if (state === 'cloudOnly') return productCopy.storage.cloudOnly;
   if (state === 'uploading') return productCopy.storage.uploading;
-  if (state === 'queued') return productCopy.storage.waitingToUpload;
+  if (state === 'waiting') return productCopy.storage.waitingToUpload;
   return error ?? productCopy.storage.failed;
 }
+
+/** @deprecated Storage state is user-facing; use storageStateLabel instead. */
+export function backupStateLabel(state: TransferState, error?: string | null): string { return state === 'synced' ? productCopy.storage.backedUp : state === 'uploading' ? productCopy.storage.uploading : state === 'queued' ? productCopy.storage.waitingToUpload : error ?? productCopy.storage.failed; }

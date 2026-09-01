@@ -9,7 +9,7 @@ import { backupStateLabel } from '../src/content/productCopy';
 import type { MediaRecord } from '../src/types/domain';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
-const item = { _id: 'media-id', filename: 'VID_20260831.mp4', mimeType: 'video/mp4', sizeBytes: 1_572_864, durationMs: 65_000, createdAt: 1_788_131_200_000, locationName: null, width: 1920, height: 1080, collectionName: 'Camera', localAssetId: 'asset-id', localRemovedAt: null, state: 'synced', syncError: null, videoUrl: 'https://example.invalid/video', thumbnailUrl: null } as MediaRecord;
+const item = { _id: 'media-id', filename: 'VID_20260831.mp4', mimeType: 'video/mp4', sizeBytes: 1_572_864, durationMs: 65_000, createdAt: 1_788_131_200_000, locationName: null, width: 1920, height: 1080, collectionId: null, collectionName: 'Camera', sourceCollectionLocalId: 'device:camera', deviceId: null, localAssetId: 'asset-id', localRemovedAt: null, transferState: 'synced', storage: { state: 'onDeviceAndCloud', cloudAvailable: true, localAvailable: true, safeToRemoveLocal: true, backedUpAt: 1_788_131_200_000 }, syncError: null, videoUrl: 'https://example.invalid/video', thumbnailUrl: null } as MediaRecord;
 
 describe('shared UI and formatters', () => {
   it('formats actual media metadata for the UI', () => { expect(formatBytes(1_572_864)).toBe('1.5 MB'); expect(formatDuration(65_000)).toBe('1:05'); expect(titleFromFilename('VID_20260831.mp4')).toBe('VID 20260831'); });

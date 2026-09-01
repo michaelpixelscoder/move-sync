@@ -3,6 +3,8 @@ import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppProviders } from './providers/AppProviders';
 import { useClientKey } from './hooks/useClientKey';
+import { useDevicePresence } from './hooks/useDevicePresence';
+import { useLibrarySummaryRebuild } from './hooks/useLibrarySummaryRebuild';
 import type { Screen } from './navigation/types';
 import { AppShell } from './components/layout/AppShell';
 import { LoadingState, ErrorState } from './components/ui/ScreenState';
@@ -17,6 +19,8 @@ export default function App() { return <AppProviders><MoveSync /></AppProviders>
 
 function MoveSync() {
   const [screen, setScreen] = useState<Screen>({ name: 'videos' }); const { clientKey, error } = useClientKey();
+  useDevicePresence(clientKey);
+  useLibrarySummaryRebuild(clientKey);
   useEffect(() => { if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0); }, [screen.name]);
   if (error) return <SafeAreaView style={styles.safe}><ErrorState message={error} /></SafeAreaView>;
   if (!clientKey) return <SafeAreaView style={styles.safe}><LoadingState label="Preparing secure device storage…" /></SafeAreaView>;

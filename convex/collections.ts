@@ -25,6 +25,7 @@ function collectionView(collection: {
   videoCount: number;
   autoSync: boolean;
   lastReconciledAt: number;
+  isAvailable?: boolean;
 }) {
   return {
     _id: collection._id,
@@ -35,6 +36,7 @@ function collectionView(collection: {
     videoCount: collection.videoCount,
     autoSync: collection.autoSync,
     lastReconciledAt: collection.lastReconciledAt,
+    isAvailable: collection.isAvailable ?? true,
   };
 }
 
@@ -123,6 +125,7 @@ export const reconcile = mutation({
           assetCount: collection.assetCount,
           videoCount: collection.videoCount,
           lastReconciledAt: reconciledAt,
+          isAvailable: true,
         });
         resultIds.push(current._id);
       } else {
@@ -135,6 +138,7 @@ export const reconcile = mutation({
             videoCount: collection.videoCount,
             autoSync: false,
             lastReconciledAt: reconciledAt,
+            isAvailable: true,
           }),
         );
       }
@@ -142,7 +146,9 @@ export const reconcile = mutation({
 
     for (const collection of existing) {
       if (!seen.has(collection.localId)) {
-        await ctx.db.delete(collection._id);
+        // Do not delete an album that existing media references. It may return
+        // on the device later, and the stable relation remains useful in cloud.
+        await ctx.db.patch(collection._id, { isAvailable: false });
       }
     }
 

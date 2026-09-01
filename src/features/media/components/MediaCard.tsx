@@ -3,12 +3,12 @@ import { Ionicons } from '@expo/vector-icons';
 import type { MediaRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
 import { formatBytes, formatDuration, titleFromFilename } from '../../../lib/format';
-import { backupStateLabel } from '../../../content/productCopy';
+import { storageStateLabel } from '../../../content/productCopy';
 
 export function MediaCard({ item, desktop, selected, onPress, onLongPress }: { item: MediaRecord; desktop: boolean; selected: boolean; onPress: () => void; onLongPress: () => void }) {
-  const icon = item.state === 'synced' ? 'cloud-done-outline' : item.state === 'uploading' ? 'cloud-upload-outline' : item.state === 'error' ? 'alert-circle-outline' : 'time-outline';
-  const stateLabel = backupStateLabel(item.state, item.syncError);
-  const stateColor = item.state === 'synced' ? theme.color.success : item.state === 'error' ? theme.color.danger : theme.color.textSecondary;
+  const icon = item.storage.cloudAvailable ? 'cloud-done-outline' : item.storage.state === 'uploading' ? 'cloud-upload-outline' : item.storage.state === 'failed' ? 'alert-circle-outline' : 'time-outline';
+  const stateLabel = storageStateLabel(item.storage.state, item.syncError);
+  const stateColor = item.storage.cloudAvailable ? theme.color.success : item.storage.state === 'failed' ? theme.color.danger : theme.color.textSecondary;
   return <Pressable testID={`media-${item._id}`} accessibilityLabel={`${item.filename}, ${stateLabel}`} onPress={onPress} onLongPress={onLongPress} style={({ pressed, hovered }: any) => [styles.card, !desktop && styles.mobile, selected && styles.selected, (pressed || hovered) && styles.interaction]}>
     <View style={[styles.visual, !desktop && styles.visualMobile]}>{item.thumbnailUrl ? <Image source={{ uri: item.thumbnailUrl }} style={styles.image as any} /> : <View style={styles.videoFallback}><Ionicons name="videocam" color={theme.color.textSecondary} size={30} /><Text style={styles.fallbackText}>Thumbnail processing</Text></View>}<Text style={styles.duration}>{formatDuration(item.durationMs)}</Text></View>
     {selected ? <View style={styles.check}><Ionicons name="checkmark" color={theme.color.white} size={16} /></View> : null}

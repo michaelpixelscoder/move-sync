@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as collections from "../collections.js";
+import type * as devices from "../devices.js";
 import type * as media from "../media.js";
 import type * as shared from "../shared.js";
 
@@ -19,7 +21,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   collections: typeof collections;
+  devices: typeof devices;
   media: typeof media;
   shared: typeof shared;
 }>;
