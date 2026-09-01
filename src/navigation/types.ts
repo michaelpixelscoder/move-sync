@@ -1,2 +1,2 @@
 import type { Id } from '../../convex/_generated/dataModel';
-export type Screen = { name: 'media' } | { name: 'autosync' } | { name: 'player'; mediaId: Id<'media'> };
+export type Screen = { name: 'videos' } | { name: 'backup' } | { name: 'player'; mediaId: Id<'media'> };

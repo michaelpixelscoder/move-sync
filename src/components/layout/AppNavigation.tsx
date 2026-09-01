@@ -2,10 +2,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Screen } from '../../navigation/types';
 import { colors } from '../../theme/tokens';
+import { productCopy } from '../../content/productCopy';
 
 type Props = { desktop: boolean; screen: Screen; onNavigate: (screen: Screen) => void };
 export function AppNavigation({ desktop, screen, onNavigate }: Props) {
-  const items = <><NavItem desktop={desktop} label="Medias" icon="videocam-outline" active={screen.name === 'media'} onPress={() => onNavigate({ name: 'media' })} /><NavItem desktop={desktop} label="AutoSync" icon="cloud-upload-outline" active={screen.name === 'autosync'} onPress={() => onNavigate({ name: 'autosync' })} /></>;
+  // Keep navigation to completed destinations only. Collections and device management
+  // join this configuration when their surfaces exist.
+  const items = <><NavItem desktop={desktop} label={productCopy.navigation.videos} icon="videocam-outline" active={screen.name === 'videos'} onPress={() => onNavigate({ name: 'videos' })} /><NavItem desktop={desktop} label={productCopy.navigation.backup} icon="cloud-upload-outline" active={screen.name === 'backup'} onPress={() => onNavigate({ name: 'backup' })} /></>;
   return desktop ? <View style={styles.sidebar}><View style={styles.logo}><View style={styles.logoMark}><Ionicons name="cloud-outline" size={19} color={colors.primary} /></View><Text style={styles.logoText}>Move Sync</Text></View><Text style={styles.sectionLabel}>LIBRARY</Text><View style={styles.nav}>{items}</View></View> : screen.name !== 'player' ? <View style={styles.bottom}>{items}</View> : null;
 }
 function NavItem({ desktop, label, icon, active, onPress }: { desktop: boolean; label: string; icon: 'videocam-outline' | 'cloud-upload-outline'; active: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.item, desktop ? styles.sidebarItem : styles.bottomItem, active && styles.active]}><Ionicons name={icon} size={19} color={active ? colors.primary : colors.muted} /><Text style={[styles.itemText, active && styles.activeText]}>{label}</Text></Pressable>; }
