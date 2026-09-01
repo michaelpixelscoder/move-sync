@@ -1,5 +1,13 @@
 # Move Sync Design QA
 
+## Component review criteria
+
+- Use semantic `theme` tokens and shared page/control primitives. Do not add ad-hoc color, radius, spacing, or breakpoint literals inside screen components.
+- Let spacing and soft surface changes establish groups. Hairline dividers are for dense status/list rows only; cards and sections should not be boxed by default.
+- Reserve blue for primary actions and selected state; reserve success, warning, and danger for meaningful storage or error conditions. Every color-led state needs text or an icon too.
+- Keep a video thumbnail or playback surface as the first visual priority. Metadata is compact and supplemental; page titles, section titles, card titles, meta, and status use the shared type hierarchy.
+- All interactive controls retain a 44px touch target, an accessible label, and visible pressed/hover or focus feedback. Motion uses the shared 150–250ms durations and must remain optional.
+
 - Source visual truth: user-provided desktop screenshots in `/home/michael/t3code/data/userdata/attachments/ba2bd92f-a9be-4f34-8432-7dc3eabe1a35-*.png`.
 - Design direction: sober, professional desktop workspace; eliminate the stretched mobile-navigation treatment and uncontrolled desktop spacing.
 - Implementation evidence: `artifacts/desktop-library.png`, `artifacts/desktop-autosync.png`, `artifacts/web-player.png`, and `artifacts/mobile-library.png`.
