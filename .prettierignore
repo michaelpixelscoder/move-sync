@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+coverage/
+artifacts/
+playwright-report/
+test-results/
+convex/_generated/
