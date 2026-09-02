@@ -6,7 +6,7 @@ export const theme = {
     canvas: '#0A0F17', surface: '#111821', surfaceElevated: '#161E2B', surfacePressed: '#1D2838', surfaceSelected: '#12294B',
     textPrimary: '#FFFFFF', textSecondary: '#9BA5B1', textTertiary: '#748093', accent: '#2F7BFF', accentPressed: '#2363D4', accentSubtle: '#11294D',
     success: '#22C55E', successSubtle: '#0D2A1B', warning: '#F59E0B', warningSubtle: '#34240A', danger: '#EF4444', dangerSubtle: '#351419',
-    overlay: 'rgba(2, 6, 12, 0.74)', mediaOverlay: 'rgba(0, 0, 0, 0.72)', mediaCanvas: '#000000', divider: 'rgba(155, 165, 177, 0.16)', focus: '#8DB5FF', white: '#FFFFFF',
+    overlay: 'rgba(2, 6, 12, 0.74)', mediaOverlay: 'rgba(0, 0, 0, 0.72)', mediaGradientStart: 'rgba(0, 0, 0, 0)', mediaGradientEnd: 'rgba(0, 0, 0, 0.76)', mediaCanvas: '#000000', divider: 'rgba(155, 165, 177, 0.16)', focus: '#8DB5FF', white: '#FFFFFF',
   },
   type: {
     family: Platform.select({ web: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', ios: 'System', android: 'sans-serif', default: 'System' }),

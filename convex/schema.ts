@@ -12,6 +12,17 @@ export default defineSchema({
     isAvailable: v.optional(v.boolean()),
   }).index("by_client_key", ["clientKey"]).index("by_client_key_and_auto_sync", ["clientKey", "autoSync"]).index("by_client_key_and_local_id", ["clientKey", "localId"]),
 
+  // Cloud playlists are user-created destinations, deliberately separate from
+  // device albums (`collections`) selected in mobile Backup.
+  playlists: defineTable({ clientKey: v.string(), name: v.string(), createdAt: v.number(), lastAccessedAt: v.number() })
+    .index("by_client_key", ["clientKey"])
+    .index("by_client_key_and_last_accessed_at", ["clientKey", "lastAccessedAt"]),
+
+  playlistMedia: defineTable({ clientKey: v.string(), playlistId: v.id("playlists"), mediaId: v.id("media"), addedAt: v.number() })
+    .index("by_playlist", ["playlistId"])
+    .index("by_playlist_and_media", ["playlistId", "mediaId"])
+    .index("by_media", ["mediaId"]),
+
   devices: defineTable({ clientKey: v.string(), name: v.string(), platform: v.string(), firstSeenAt: v.number(), lastSeenAt: v.number(), lastBackupAt: v.optional(v.number()) }).index("by_client_key", ["clientKey"]),
 
   media: defineTable({

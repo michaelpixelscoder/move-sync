@@ -14,7 +14,11 @@ export async function shareMedia(items: MediaRecord[]) {
       if (!navigator.canShare || navigator.canShare({ files })) { await navigator.share({ title: 'Move Sync videos', files }); return; }
       await navigator.share({ title: 'Move Sync videos', text: available.map(item => `${item.filename}: ${item.videoUrl}`).join('\n') }); return;
     }
-    await navigator.clipboard.writeText(available.map(item => item.videoUrl).join('\n'));
+    const links = available.map(item => item.videoUrl).join('\n');
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(links); return; }
+    // Web Share and Clipboard are both unavailable on many HTTP/local web
+    // previews. Opening the cloud copy is a usable, explicit fallback.
+    globalThis.open?.(available[0].videoUrl, '_blank', 'noopener,noreferrer');
     return;
   }
   if (available.length === 1 && await Sharing.isAvailableAsync()) {

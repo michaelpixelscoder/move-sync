@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { usePaginatedQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { MediaRecord, UploadProgress } from '../../../types/domain';
@@ -13,35 +13,67 @@ import { uploadPickedVideo } from '../services/upload';
 import { shareMedia } from '../services/share';
 import { productCopy, type LibraryScope } from '../../../content/productCopy';
 import { useResponsive } from '../../../hooks/useResponsive';
-import { ContentFrame, ResponsiveGrid } from '../../../components/layout/PagePrimitives';
-import { LibraryHeader, LibraryToolbar, UploadActivity } from '../components/LibraryChrome';
+import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
+import { ContentFrame, SectionHeader } from '../../../components/layout/PagePrimitives';
+import { LibraryFilterPanel, LibraryHeader, LibraryToolbar, UploadActivity } from '../components/LibraryChrome';
+import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
 
 type Props = { clientKey: string; onOpen: (id: Id<'media'>) => void };
+type Sort = 'asc' | 'desc';
+type DateSection = { label: string; rows: MediaRecord[] };
+
 export function MediaLibraryScreen({ clientKey, onOpen }: Props) {
-  const { isDesktop } = useResponsive(); const { results: rows, status, loadMore } = usePaginatedQuery(api.media.listPage, { clientKey, filter: undefined }, { initialNumItems: 24 });
-  const [filter, setFilter] = useState<LibraryScope>('all'); const [selected, setSelected] = useState<Set<Id<'media'>>>(new Set()); const [uploads, setUploads] = useState<UploadProgress[]>([]); const [error, setError] = useState<string>(); const [sharing, setSharing] = useState(false);
-  const shown = useMemo(() => rows.filter(item => filter === 'all' ? true : item.storage.state === 'uploading' || item.storage.state === 'waiting'), [filter, rows]);
-  const selectedRows = useMemo(() => rows.filter(item => selected.has(item._id)), [rows, selected]);
+  const { width, isDesktop, isMobile, isWide } = useResponsive();
+  const isOnline = useOnlineStatus();
+  const [scope, setScope] = useState<LibraryScope>('all'); const [search, setSearch] = useState(''); const debouncedSearch = useDebouncedValue(search.trim()); const [sort, setSort] = useState<Sort>('desc'); const [issuesOnly, setIssuesOnly] = useState(false); const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<Id<'media'>>>(new Set()); const [playlistMediaIds, setPlaylistMediaIds] = useState<Id<'media'>[]>(); const [uploads, setUploads] = useState<UploadProgress[]>([]); const [error, setError] = useState<string>(); const [sharing, setSharing] = useState(false);
+  const queryFilter = useMemo(() => debouncedSearch ? { kind: 'filename' as const, query: debouncedSearch } : scope === 'onCloud' ? { kind: 'cloud' as const } : scope === 'uploading' ? { kind: 'transfer' as const, state: 'uploading' as const } : undefined, [debouncedSearch, scope]);
+  const { results: rows, status, loadMore } = usePaginatedQuery(api.media.listPage, { clientKey, filter: queryFilter, sort }, { initialNumItems: 24 });
+  const summary = useQuery(api.media.summary, { clientKey });
+  const activeActivities = useQuery(api.activity.listPage, { clientKey, state: 'uploading', paginationOpts: { cursor: null, numItems: 100 } });
+  const progressByMediaId = useMemo(() => new Map((activeActivities?.page ?? []).filter(activity => activity.mediaId).map(activity => [String(activity.mediaId), activity.progress])), [activeActivities]);
+  const shown = useMemo(() => (rows as MediaRecord[]).filter(item => {
+    if (scope === 'onCloud' && !item.storage.cloudAvailable) return false;
+    if (scope === 'uploading' && item.storage.state !== 'uploading' && item.storage.state !== 'waiting') return false;
+    return !issuesOnly || item.storage.state === 'failed';
+  }), [issuesOnly, rows, scope]);
+  const sections = useMemo(() => groupByCaptureDate(shown), [shown]);
+  const selectedRows = useMemo(() => (rows as MediaRecord[]).filter(item => selected.has(item._id)), [rows, selected]);
+  const columns = isMobile ? 2 : isWide ? 4 : 3;
+  const availableWidth = Math.min(theme.content.wide, width - (isDesktop ? theme.size.sidebar : 0)) - theme.space.lg * 2;
+  const cardWidth = Math.floor((availableWidth - (columns - 1) * (isMobile ? theme.space.sm : theme.space.md)) / columns);
 
   const toggle = (id: Id<'media'>) => setSelected(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const setLibraryScope = (next: LibraryScope) => { setScope(next); setSelected(new Set()); };
   const pickVideos = async () => {
     setError(undefined); const result = await DocumentPicker.getDocumentAsync({ type: 'video/*', multiple: true, copyToCacheDirectory: true }); if (result.canceled) return;
-    setFilter('uploading');
+    setLibraryScope('uploading');
     for (const asset of result.assets) {
       const key = `${asset.name}:${asset.lastModified}`; setUploads(current => [...current, { key, filename: asset.name, progress: 0, state: 'uploading' }]);
       try { await uploadPickedVideo(clientKey, asset, progress => setUploads(current => current.map(item => item.key === key ? { ...item, progress } : item))); setUploads(current => current.filter(item => item.key !== key)); }
       catch (value) { const message = value instanceof Error ? value.message : `Unable to upload ${asset.name}`; setUploads(current => current.map(item => item.key === key ? { ...item, state: 'error', error: message } : item)); setError(message); }
     }
   };
-  const share = async () => { try { setSharing(true); setError(undefined); await shareMedia(selectedRows as MediaRecord[]); setSelected(new Set()); } catch (value) { setError(value instanceof Error ? value.message : 'Unable to share videos'); } finally { setSharing(false); } };
+  const share = async () => { try { setSharing(true); setError(undefined); await shareMedia(selectedRows); setSelected(new Set()); } catch (value) { setError(value instanceof Error ? value.message : 'Unable to share videos'); } finally { setSharing(false); } };
 
-  if (status === 'LoadingFirstPage') return <LoadingState label={productCopy.library.loading} />;
-  return <View style={styles.screen}><LibraryHeader onUpload={pickVideos} />
-    {error ? <ErrorState message={error} /> : null}
-    <LibraryToolbar filter={filter} onFilter={setFilter} selectionCount={selected.size} onClear={() => setSelected(new Set())} />
-    <UploadActivity uploads={uploads} />
-    {shown.length ? <ScrollView contentContainerStyle={styles.scroll}><ContentFrame width="wide" style={styles.content}><ResponsiveGrid>{shown.map(item => <MediaCard key={item._id} item={item as MediaRecord} desktop={isDesktop} selected={selected.has(item._id)} onLongPress={() => toggle(item._id)} onPress={() => selected.size ? toggle(item._id) : onOpen(item._id)} />)}</ResponsiveGrid>{status === 'CanLoadMore' || status === 'LoadingMore' ? <View style={styles.more}><Button label={status === 'LoadingMore' ? 'Loading videos…' : 'Load more videos'} loading={status === 'LoadingMore'} onPress={() => loadMore(24)} /></View> : null}</ContentFrame></ScrollView> : <EmptyState title={filter === 'all' ? productCopy.library.emptyAll.title : productCopy.library.emptyUploading.title} message={filter === 'all' ? productCopy.library.emptyAll.message : productCopy.library.emptyUploading.message} action={filter === 'all' ? productCopy.library.emptyAll.action : undefined} onAction={filter === 'all' ? pickVideos : undefined} />}
-    {selected.size ? <View style={styles.selection}><View><Text style={styles.selectionTitle}>{selected.size} selected</Text><Text style={styles.selectionMeta}>{productCopy.library.selectedReadyToShare}</Text></View><Button label={sharing ? 'Preparing…' : productCopy.actions.share} icon="share-outline" disabled={sharing} onPress={share} /></View> : null}
+  const isLoading = status === 'LoadingFirstPage' && rows.length === 0;
+  const empty = emptyCopy(scope, Boolean(debouncedSearch), issuesOnly);
+  return <View style={styles.screen}>
+    <LibraryHeader onUpload={pickVideos} summary={summary} />
+    <LibraryToolbar search={search} onSearch={setSearch} scope={scope} onScope={setLibraryScope} selectionCount={selected.size} onClear={() => setSelected(new Set())} sort={sort} onSort={setSort} onFilters={() => setFiltersOpen(true)} desktop={isDesktop} />
+    <LibraryFilterPanel visible={filtersOpen} issuesOnly={issuesOnly} onToggleIssues={() => setIssuesOnly(value => !value)} onClose={() => setFiltersOpen(false)} />
+    <UploadActivity uploads={uploads} activeUploadCount={summary?.activeUploadCount ?? 0} waitingCount={summary?.waitingCount ?? 0} onPress={() => setLibraryScope('uploading')} />
+    {!isOnline ? <ErrorState message="You're offline. Reconnect to load more videos or retry an upload." onRetry={() => loadMore(24)} /> : null}
+    {error ? <ErrorState message={error} onRetry={pickVideos} /> : null}
+    {isLoading ? <LoadingState label={productCopy.library.loading} /> : shown.length ? <ScrollView contentContainerStyle={styles.scroll}><ContentFrame width="wide" style={styles.content}>{sections.map((section, index) => <View key={`${section.label}-${index}`} style={styles.section}><SectionHeader title={section.label} /><View style={[styles.grid, { gap: isMobile ? theme.space.sm : theme.space.md }]}>{section.rows.map(item => <MediaCard key={item._id} item={item} width={cardWidth} selected={selected.has(item._id)} progress={progressByMediaId.get(String(item._id))} onAddToPlaylist={() => setPlaylistMediaIds([item._id])} onLongPress={() => toggle(item._id)} onPress={() => selected.size ? toggle(item._id) : onOpen(item._id)} />)}</View></View>)}{status === 'CanLoadMore' || status === 'LoadingMore' ? <View style={styles.more}><Button label={status === 'LoadingMore' ? 'Loading more videos…' : 'Load more videos'} loading={status === 'LoadingMore'} onPress={() => loadMore(24)} /></View> : null}</ContentFrame></ScrollView> : <EmptyState title={empty.title} message={empty.message} action={'action' in empty ? empty.action : undefined} onAction={'action' in empty && empty.action ? pickVideos : undefined} />}
+    {selected.size ? <View style={styles.selection}><View><Text style={styles.selectionTitle}>{selected.size} selected</Text><Text style={styles.selectionMeta}>{productCopy.library.selectedReadyToShare}</Text></View><View style={styles.selectionActions}><Button label="Add to playlist" icon="list-outline" tone="secondary" onPress={() => setPlaylistMediaIds([...selected])} /><Button label={sharing ? 'Preparing…' : productCopy.actions.share} icon="share-outline" disabled={sharing} onPress={share} /></View></View> : null}
+    <PlaylistPicker clientKey={clientKey} mediaIds={playlistMediaIds ?? []} visible={Boolean(playlistMediaIds?.length)} onClose={() => setPlaylistMediaIds(undefined)} />
   </View>;
 }
-const styles = StyleSheet.create({ screen: { flex: 1 }, scroll: { flex: 1 }, content: { paddingBottom: 112 }, more: { alignItems: 'center', marginTop: theme.space.xl }, selection: { position: 'absolute', left: theme.space.lg, right: theme.space.lg, bottom: theme.space.md, padding: theme.space.md, borderRadius: theme.radius.md, backgroundColor: theme.color.surfaceElevated, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, selectionTitle: textStyles.cardTitle, selectionMeta: textStyles.meta });
+
+function groupByCaptureDate(rows: MediaRecord[]): DateSection[] { return rows.reduce<DateSection[]>((sections, row) => { const label = dateSectionLabel(row.createdAt); const previous = sections[sections.length - 1]; if (previous?.label === label) previous.rows.push(row); else sections.push({ label, rows: [row] }); return sections; }, []); }
+function dateSectionLabel(timestamp: number) { const now = new Date(); const target = new Date(timestamp); const day = 86_400_000; const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime(); const difference = Math.round((today - targetDay) / day); if (difference === 0) return 'Today'; if (difference === 1) return 'Yesterday'; if (difference < 7) return 'Last week'; return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(target); }
+function emptyCopy(scope: LibraryScope, hasSearch: boolean, issuesOnly: boolean) { if (hasSearch) return productCopy.library.emptySearch; if (issuesOnly) return { title: 'Nothing needs attention', message: 'All visible uploads are in a healthy state.' }; if (scope === 'onCloud') return productCopy.library.emptyOnCloud; return scope === 'uploading' ? productCopy.library.emptyUploading : productCopy.library.emptyAll; }
+
+const styles = StyleSheet.create({ screen: { flex: 1 }, scroll: { flex: 1 }, content: { paddingBottom: 112 }, section: { marginBottom: theme.space.xl, gap: theme.space.sm }, grid: { flexDirection: 'row', flexWrap: 'wrap' }, more: { alignItems: 'center', marginTop: theme.space.sm }, selection: { position: 'absolute', left: theme.space.lg, right: theme.space.lg, bottom: theme.space.md, padding: theme.space.md, borderRadius: theme.radius.md, backgroundColor: theme.color.surfaceElevated, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, selectionActions: { flexDirection: 'row', gap: theme.space.xs }, selectionTitle: textStyles.cardTitle, selectionMeta: textStyles.meta });

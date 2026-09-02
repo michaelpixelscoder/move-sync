@@ -13,7 +13,7 @@ export const productCopy = {
   appName: 'Move Sync',
   navigation: {
     videos: 'Videos',
-    collections: 'Collections',
+    collections: 'Playlists',
     backup: 'Backup',
     settings: 'Settings',
   },
@@ -22,6 +22,7 @@ export const productCopy = {
     upload: 'Upload',
     scopes: {
       all: 'All',
+      onCloud: 'On cloud',
       uploading: 'Uploading',
     },
     loading: 'Loading your videos…',
@@ -33,6 +34,14 @@ export const productCopy = {
     emptyUploading: {
       title: 'No uploads in progress',
       message: 'New uploads and automatic backups will appear here while they are running.',
+    },
+    emptyOnCloud: {
+      title: 'No cloud videos yet',
+      message: 'Completed backups will appear here once a cloud copy is verified.',
+    },
+    emptySearch: {
+      title: 'No matching videos',
+      message: 'Try a different title or filename.',
     },
     clearSelection: 'Clear selection',
     selectedReadyToShare: 'Cloud videos ready to share',

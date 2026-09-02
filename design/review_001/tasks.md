@@ -58,20 +58,20 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **3.7 Model device ownership where needed:** Add device identity/name and last-seen/last-backup metadata before building a web `Devices & backup` view; avoid implying cross-device state that the current per-device client key cannot prove.
   - [x] **3.8 Extend backend tests:** Cover ownership, pagination, aggregates, storage-state transitions, retry/error behavior, collection relationships, and the invariant that local deletion is never offered before a verified cloud copy exists.
 
-- **[ ] Initiative 4: Redesign the Videos library around the content**
+- **[x] Initiative 4: Redesign the Videos library around the content**
   **Brief:** Turn the current centered three-column dashboard into the wide, calm library shown in S4: video-led cards, clear browse scopes, search/filter/sort from the start, and a compact activity signal that appears only when work is active.
   **Tasks:**
-  - [ ] **4.1 Rebuild the Videos page composition:** Use the shared page shell for a clear `Videos` heading, cloud-capacity summary when authoritative, search/filter/sort/upload row, scopes, activity entry, and results. [Visual: S4]
-  - [ ] **4.2 Implement an adaptive media grid:** Replace percentage-width cards and the mobile list switch with an explicit responsive grid that supports the four-column wide-web arrangement in S4 and an intentional two-column recent-video treatment on mobile. [Visual: S4, S6]
-  - [ ] **4.3 Redesign `MediaCard`:** Split thumbnail, primary metadata, exceptional status, and selection affordance into focused subcomponents. [Visual: S4, S6, S8]
-    - [ ] 4.3.1 Use one fixed thumbnail aspect ratio, consistent crop, subtle bottom gradient, duration overlay, and intentional loading/fallback states.
-    - [ ] 4.3.2 Show title and capture date/time; keep duration on the thumbnail; retain compact file size only when it supports the visual hierarchy, with Details remaining authoritative. [Visual: S4, S8]
-    - [ ] 4.3.3 Keep completed cloud status quiet, but make an active card’s progress percentage, circular indicator, and progress bar immediately legible. [Visual: S4]
-  - [ ] **4.4 Replace `Synced / Queue`:** Provide `All`, `On cloud`, and `Uploading` scopes, with transfers also available through backup activity instead of treating the queue as a permanent destination. [Visual: S4]
-  - [ ] **4.5 Add search, filter, sort, and view controls:** Start search on both web and mobile; expose Filters and Sort on web, plus an optional grid/list control when it has a supported mobile treatment. [Visual: S4, S6]
-  - [ ] **4.6 Group browsing results when useful:** Add lightweight date sections such as `Today` and `Last week`, while preserving stable pagination and keyboard/screen-reader order. [Visual: S4, S6]
-  - [ ] **4.7 Add purposeful library states:** Design and implement first-use empty, no-results, loading-more, thumbnail-processing, partial-error, offline, and retry states using shared feedback components; this is the final screen-level priority in S8, not an afterthought.
-  - [ ] **4.8 Verify responsive library behavior:** Add component and Playwright coverage for wide desktop, tablet, and small mobile layouts, including long titles, missing thumbnails, large result sets, keyboard focus, and no horizontal overflow.
+  - [x] **4.1 Rebuild the Videos page composition:** Use the shared page shell for a clear `Videos` heading, cloud-capacity summary when authoritative, search/filter/sort/upload row, scopes, activity entry, and results. [Visual: S4]
+  - [x] **4.2 Implement an adaptive media grid:** Replace percentage-width cards and the mobile list switch with an explicit responsive grid that supports the four-column wide-web arrangement in S4 and an intentional two-column recent-video treatment on mobile. [Visual: S4, S6]
+  - [x] **4.3 Redesign `MediaCard`:** Split thumbnail, primary metadata, exceptional status, and selection affordance into focused subcomponents. [Visual: S4, S6, S8]
+    - [x] 4.3.1 Use one fixed thumbnail aspect ratio, consistent crop, subtle bottom gradient, duration overlay, and intentional loading/fallback states.
+    - [x] 4.3.2 Show title and capture date/time; keep duration on the thumbnail; retain compact file size only when it supports the visual hierarchy, with Details remaining authoritative. [Visual: S4, S8]
+    - [x] 4.3.3 Keep completed cloud status quiet, but make an active card’s progress percentage, circular indicator, and progress bar immediately legible. [Visual: S4]
+  - [x] **4.4 Replace `Synced / Queue`:** Provide `All`, `On cloud`, and `Uploading` scopes, with transfers also available through backup activity instead of treating the queue as a permanent destination. [Visual: S4]
+  - [x] **4.5 Add search, filter, sort, and view controls:** Start search on both web and mobile; expose Filters and Sort on web, plus an optional grid/list control when it has a supported mobile treatment. [Visual: S4, S6]
+  - [x] **4.6 Group browsing results when useful:** Add lightweight date sections such as `Today` and `Last week`, while preserving stable pagination and keyboard/screen-reader order. [Visual: S4, S6]
+  - [x] **4.7 Add purposeful library states:** Design and implement first-use empty, no-results, loading-more, thumbnail-processing, partial-error, offline, and retry states using shared feedback components; this is the final screen-level priority in S8, not an afterthought.
+  - [x] **4.8 Verify responsive library behavior:** Add component and Playwright coverage for wide desktop, tablet, and small mobile layouts, including long titles, missing thumbnails, large result sets, keyboard focus, and no horizontal overflow.
 
 - **[ ] Initiative 5: Make Backup and freeing space the core mobile experience**
   **Brief:** Replace the settings-like AutoSync page with the dedicated Backup destination in S7: a reassurance banner, a tangible free-space card, collection-level automatic backup, and one clear preference. This is the product’s signature mobile experience. [Visual: S2, S7]

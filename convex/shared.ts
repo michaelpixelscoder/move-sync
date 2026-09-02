@@ -5,6 +5,7 @@ export const storageStateValidator = v.union(v.literal("uploading"), v.literal("
 export const activityStateValidator = v.union(v.literal("waiting"), v.literal("uploading"), v.literal("completed"), v.literal("failed"));
 
 export const collectionValidator = v.object({ _id: v.id("collections"), _creationTime: v.number(), localId: v.string(), name: v.string(), assetCount: v.number(), videoCount: v.number(), autoSync: v.boolean(), lastReconciledAt: v.number(), isAvailable: v.boolean() });
+export const playlistValidator = v.object({ _id: v.id("playlists"), _creationTime: v.number(), name: v.string(), createdAt: v.number(), lastAccessedAt: v.number(), videoCount: v.number() });
 export const storageValidator = v.object({ state: storageStateValidator, cloudAvailable: v.boolean(), localAvailable: v.boolean(), safeToRemoveLocal: v.boolean(), backedUpAt: v.union(v.number(), v.null()) });
 export const mediaValidator = v.object({
   _id: v.id("media"), _creationTime: v.number(), localAssetId: v.union(v.string(), v.null()), collectionId: v.union(v.id("collections"), v.null()), collectionName: v.union(v.string(), v.null()), sourceCollectionLocalId: v.union(v.string(), v.null()), deviceId: v.union(v.id("devices"), v.null()),

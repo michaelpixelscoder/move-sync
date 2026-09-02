@@ -17,7 +17,7 @@ import { PlayerChrome } from '../components/PlayerChrome';
 import { PlayerInspector } from '../components/PlayerInspector';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
 
-export function PlayerScreen({ clientKey, mediaId, onBack }: { clientKey: string; mediaId: Id<'media'>; onBack: () => void }) {
+export function PlayerScreen({ clientKey, mediaId, onBack, onOpenNavigation }: { clientKey: string; mediaId: Id<'media'>; onBack: () => void; onOpenNavigation?: () => void }) {
   const item = useQuery(api.media.getById, { clientKey, id: mediaId }); const remove = useMutation(api.media.remove); const markLocalRemoved = useMutation(api.media.markLocalRemoved); const { isDesktop } = useResponsive(); const [details, setDetails] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState<string>();
   const player = useVideoPlayer(item?.videoUrl ?? null);
   if (item === undefined) return <LoadingState label="Opening video…" />;
@@ -28,9 +28,9 @@ export function PlayerScreen({ clientKey, mediaId, onBack }: { clientKey: string
   const share = async () => { try { setBusy(true); await shareMedia([media]); } catch (value) { setError(value instanceof Error ? value.message : 'Unable to share video'); } finally { setBusy(false); } };
   // The server derives this only after Convex Storage confirms the cloud object.
   const localAction = Platform.OS !== 'web' && Boolean(media.localAssetId && !media.localAssetId.startsWith('picked:') && media.storage.safeToRemoveLocal) ? deleteLocalCopy : undefined;
-  return <View style={styles.screen}><PlayerChrome title={titleFromFilename(media.filename)} onBack={onBack} onShare={share} onDetails={() => setDetails(true)} />
+  return <View style={styles.screen}><PlayerChrome title={titleFromFilename(media.filename)} onBack={onBack} onShare={share} onDetails={() => setDetails(value => !value)} detailsVisible={details} onOpenNavigation={isDesktop ? onOpenNavigation : undefined} />
     {error ? <View style={styles.inlineError}><Text style={styles.errorText}>{error}</Text></View> : null}
-    <ContentFrame width="wide" style={[styles.layout, isDesktop && styles.layoutDesktop]}><View style={styles.videoPanel}><VideoView testID="video-player" player={player} style={styles.video} contentFit="contain" nativeControls /><View style={styles.caption}><Text style={styles.title}>{titleFromFilename(media.filename)}</Text><Text style={styles.captionMeta}>{media.mimeType} · {formatBytes(media.sizeBytes)} · {formatDuration(media.durationMs)}</Text></View></View>{isDesktop ? <PlayerInspector item={media} busy={busy} onShare={share} onDeleteCloud={deleteCloudCopy} onDeleteLocal={localAction} /> : null}</ContentFrame>
+    <ContentFrame width="wide" style={[styles.layout, isDesktop && details && styles.layoutDesktop]}><View style={styles.videoPanel}><VideoView testID="video-player" player={player} style={styles.video} contentFit="contain" nativeControls /><View style={styles.caption}><Text style={styles.title}>{titleFromFilename(media.filename)}</Text><Text style={styles.captionMeta}>{media.mimeType} · {formatBytes(media.sizeBytes)} · {formatDuration(media.durationMs)}</Text></View></View>{isDesktop && details ? <PlayerInspector item={media} busy={busy} onShare={share} onDeleteCloud={deleteCloudCopy} onDeleteLocal={localAction} /> : null}</ContentFrame>
     <BottomSheet visible={details && !isDesktop} onClose={() => setDetails(false)} label="Close details"><Text style={styles.sheetTitle}>{productCopy.player.detailsTitle}</Text><PlayerInspector compact item={media} busy={busy} onShare={share} onDeleteCloud={deleteCloudCopy} onDeleteLocal={localAction} /></BottomSheet>
   </View>;
 }

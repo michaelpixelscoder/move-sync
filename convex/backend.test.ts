@@ -86,10 +86,13 @@ describe('Move Sync backend', () => {
     const first = await t.mutation(api.media.enqueue, { clientKey: ownerKey, localAssetId: 'page-1', collectionId: camera._id, sourceCollectionLocalId: camera.localId, filename: 'rehearsal-one.mp4', mimeType: 'video/mp4', sizeBytes: 1, durationMs: 1000, createdAt: 1000 });
     await t.mutation(api.media.enqueue, { clientKey: ownerKey, localAssetId: 'page-2', collectionId: camera._id, sourceCollectionLocalId: camera.localId, filename: 'rehearsal-two.mp4', mimeType: 'video/mp4', sizeBytes: 1, durationMs: 2000, createdAt: 2000 });
     await t.mutation(api.media.enqueue, { clientKey: ownerKey, localAssetId: 'page-3', filename: 'practice-three.mp4', mimeType: 'video/mp4', sizeBytes: 1, durationMs: 3000, createdAt: 3000 });
-    const page1 = await t.query(api.media.listPage, { clientKey: ownerKey, paginationOpts: { cursor: null, numItems: 2 } });
+    const page1 = await t.query(api.media.listPage, { clientKey: ownerKey, sort: 'desc', paginationOpts: { cursor: null, numItems: 2 } });
     expect(page1.page).toHaveLength(2);
+    expect(page1.page.map(item => item.filename)).toEqual(['practice-three.mp4', 'rehearsal-two.mp4']);
     const page2 = await t.query(api.media.listPage, { clientKey: ownerKey, paginationOpts: { cursor: page1.continueCursor, numItems: 2 } });
     expect([...page1.page, ...page2.page].map(item => item._id)).toContain(first);
+    const oldestFirst = await t.query(api.media.listPage, { clientKey: ownerKey, sort: 'asc', paginationOpts: { cursor: null, numItems: 1 } });
+    expect(oldestFirst.page[0].filename).toBe('rehearsal-one.mp4');
     const collectionPage = await t.query(api.media.listPage, { clientKey: ownerKey, filter: { kind: 'collection', collectionId: camera._id }, paginationOpts: { cursor: null, numItems: 10 } });
     expect(collectionPage.page).toHaveLength(2);
     expect(collectionPage.page[0].collectionId).toBe(camera._id);
@@ -102,5 +105,17 @@ describe('Move Sync backend', () => {
     const device = await t.mutation(api.devices.upsertCurrent, { clientKey: ownerKey, name: 'Test phone', platform: 'ios' });
     expect((await t.query(api.devices.current, { clientKey: ownerKey }))?._id).toBe(device._id);
     expect(await t.query(api.devices.current, { clientKey: otherKey })).toBeNull();
+  });
+
+  it('keeps playlists separate from device collections and supports many-to-many video membership', async () => {
+    const first = await t.mutation(api.media.enqueue, { clientKey: ownerKey, localAssetId: 'playlist-one', filename: 'one.mp4', mimeType: 'video/mp4', sizeBytes: 1, durationMs: 1000, createdAt: 1 });
+    const second = await t.mutation(api.media.enqueue, { clientKey: ownerKey, localAssetId: 'playlist-two', filename: 'two.mp4', mimeType: 'video/mp4', sizeBytes: 1, durationMs: 1000, createdAt: 2 });
+    const rehearsal = await t.mutation(api.playlists.create, { clientKey: ownerKey, name: 'Rehearsal' });
+    const favorites = await t.mutation(api.playlists.create, { clientKey: ownerKey, name: 'Favorites' });
+    expect(await t.mutation(api.playlists.addMedia, { clientKey: ownerKey, playlistId: rehearsal._id, mediaIds: [first, second] })).toBe(2);
+    expect(await t.mutation(api.playlists.addMedia, { clientKey: ownerKey, playlistId: favorites._id, mediaIds: [first] })).toBe(1);
+    expect(await t.query(api.playlists.listMediaIds, { clientKey: ownerKey, playlistId: rehearsal._id })).toHaveLength(2);
+    expect((await t.query(api.playlists.get, { clientKey: ownerKey, id: favorites._id })).videoCount).toBe(1);
+    await expect(t.mutation(api.playlists.addMedia, { clientKey: otherKey, playlistId: rehearsal._id, mediaIds: [first] })).rejects.toThrow(/not found/i);
   });
 });
