@@ -1,1 +1,3 @@
-export async function syncCollection() { return 0; }
+export async function syncCollection() {
+  return 0;
+}

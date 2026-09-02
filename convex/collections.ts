@@ -1,11 +1,11 @@
-import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { ConvexError, v } from 'convex/values';
+import { mutation, query } from './_generated/server';
 import {
   assertClientKey,
   assertNonEmpty,
   assertNonNegativeInteger,
   collectionValidator,
-} from "./shared";
+} from './shared';
 
 const MAX_COLLECTIONS = 500;
 
@@ -17,7 +17,7 @@ const deviceCollectionValidator = v.object({
 });
 
 function collectionView(collection: {
-  _id: import("./_generated/dataModel").Id<"collections">;
+  _id: import('./_generated/dataModel').Id<'collections'>;
   _creationTime: number;
   localId: string;
   name: string;
@@ -46,8 +46,8 @@ export const list = query({
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
     const collections = await ctx.db
-      .query("collections")
-      .withIndex("by_client_key", (q) => q.eq("clientKey", args.clientKey))
+      .query('collections')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
       .take(MAX_COLLECTIONS);
 
     return collections
@@ -62,9 +62,9 @@ export const listEnabled = query({
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
     const collections = await ctx.db
-      .query("collections")
-      .withIndex("by_client_key_and_auto_sync", (q) =>
-        q.eq("clientKey", args.clientKey).eq("autoSync", true),
+      .query('collections')
+      .withIndex('by_client_key_and_auto_sync', (q) =>
+        q.eq('clientKey', args.clientKey).eq('autoSync', true),
       )
       .take(MAX_COLLECTIONS);
 
@@ -87,35 +87,40 @@ export const reconcile = mutation({
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
     if (args.collections.length > MAX_COLLECTIONS) {
-      throw new ConvexError(`At most ${MAX_COLLECTIONS} collections are supported`);
+      throw new ConvexError(
+        `At most ${MAX_COLLECTIONS} collections are supported`,
+      );
     }
 
     const seen = new Set<string>();
     for (const collection of args.collections) {
-      assertNonEmpty(collection.localId, "localId");
-      assertNonEmpty(collection.name, "name");
-      assertNonNegativeInteger(collection.assetCount, "assetCount");
-      assertNonNegativeInteger(collection.videoCount, "videoCount");
+      assertNonEmpty(collection.localId, 'localId');
+      assertNonEmpty(collection.name, 'name');
+      assertNonNegativeInteger(collection.assetCount, 'assetCount');
+      assertNonNegativeInteger(collection.videoCount, 'videoCount');
       if (collection.videoCount > collection.assetCount) {
-        throw new ConvexError("videoCount cannot exceed assetCount");
+        throw new ConvexError('videoCount cannot exceed assetCount');
       }
       if (seen.has(collection.localId)) {
-        throw new ConvexError("Collection local IDs must be unique");
+        throw new ConvexError('Collection local IDs must be unique');
       }
       seen.add(collection.localId);
     }
 
     const existing = await ctx.db
-      .query("collections")
-      .withIndex("by_client_key", (q) => q.eq("clientKey", args.clientKey))
+      .query('collections')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
       .take(MAX_COLLECTIONS + 1);
     if (existing.length > MAX_COLLECTIONS) {
-      throw new ConvexError("Existing collection inventory exceeds the supported limit");
+      throw new ConvexError(
+        'Existing collection inventory exceeds the supported limit',
+      );
     }
 
     const byLocalId = new Map(existing.map((item) => [item.localId, item]));
     const reconciledAt = Date.now();
-    const resultIds: Array<import("./_generated/dataModel").Id<"collections">> = [];
+    const resultIds: Array<import('./_generated/dataModel').Id<'collections'>> =
+      [];
 
     for (const collection of args.collections) {
       const current = byLocalId.get(collection.localId);
@@ -130,7 +135,7 @@ export const reconcile = mutation({
         resultIds.push(current._id);
       } else {
         resultIds.push(
-          await ctx.db.insert("collections", {
+          await ctx.db.insert('collections', {
             clientKey: args.clientKey,
             localId: collection.localId,
             name: collection.name.trim(),
@@ -156,7 +161,7 @@ export const reconcile = mutation({
     return result
       .map((collection) => {
         if (!collection) {
-          throw new ConvexError("Collection disappeared during reconciliation");
+          throw new ConvexError('Collection disappeared during reconciliation');
         }
         return collectionView(collection);
       })
@@ -167,7 +172,7 @@ export const reconcile = mutation({
 export const setAutoSync = mutation({
   args: {
     clientKey: v.string(),
-    collectionId: v.id("collections"),
+    collectionId: v.id('collections'),
     enabled: v.boolean(),
   },
   returns: collectionValidator,
@@ -175,7 +180,7 @@ export const setAutoSync = mutation({
     assertClientKey(args.clientKey);
     const collection = await ctx.db.get(args.collectionId);
     if (!collection || collection.clientKey !== args.clientKey) {
-      throw new ConvexError("Collection not found");
+      throw new ConvexError('Collection not found');
     }
 
     await ctx.db.patch(collection._id, { autoSync: args.enabled });

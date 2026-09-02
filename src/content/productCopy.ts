@@ -28,16 +28,19 @@ export const productCopy = {
     loading: 'Loading your videos…',
     emptyAll: {
       title: 'No videos yet',
-      message: 'Choose videos from this device to back them up and keep them available here.',
+      message:
+        'Choose videos from this device to back them up and keep them available here.',
       action: 'Choose videos',
     },
     emptyUploading: {
       title: 'No uploads in progress',
-      message: 'New uploads and automatic backups will appear here while they are running.',
+      message:
+        'New uploads and automatic backups will appear here while they are running.',
     },
     emptyOnCloud: {
       title: 'No cloud videos yet',
-      message: 'Completed backups will appear here once a cloud copy is verified.',
+      message:
+        'Completed backups will appear here once a cloud copy is verified.',
     },
     emptySearch: {
       title: 'No matching videos',
@@ -51,14 +54,16 @@ export const productCopy = {
     loading: 'Loading backup settings…',
     web: {
       title: 'Automatic backup is managed on your phone',
-      message: 'Your cloud library is available here. Choose which collections to back up in the Move Sync mobile app.',
+      message:
+        'Your cloud library is available here. Choose which collections to back up in the Move Sync mobile app.',
     },
     scan: 'Refresh collections',
     scanning: 'Refreshing…',
     collectionSection: 'COLLECTIONS TO BACK UP',
     noCollections: {
       title: 'No video collections found',
-      message: 'Allow video-library access, then refresh this phone. Collection names and counts come directly from the device.',
+      message:
+        'Allow video-library access, then refresh this phone. Collection names and counts come directly from the device.',
       action: 'Refresh this phone',
     },
   },
@@ -75,7 +80,8 @@ export const productCopy = {
     backupTitle: 'Automatic backup',
     backupMessage: 'Choose collections and review your backup status.',
     deviceTitle: 'This device',
-    deviceMessage: 'Your Move Sync library is protected with secure device storage.',
+    deviceMessage:
+      'Your Move Sync library is protected with secure device storage.',
   },
   player: {
     backToVideos: 'Back to videos',
@@ -110,8 +116,12 @@ export type LibraryScope = keyof typeof productCopy.library.scopes;
  * - The player details surface owns file metadata, collection, storage location,
  *   and secondary or destructive actions.
  */
-export function storageStateLabel(state: StorageState, error?: string | null): string {
-  if (state === 'backedUp' || state === 'onDeviceAndCloud') return productCopy.storage.backedUp;
+export function storageStateLabel(
+  state: StorageState,
+  error?: string | null,
+): string {
+  if (state === 'backedUp' || state === 'onDeviceAndCloud')
+    return productCopy.storage.backedUp;
   if (state === 'cloudOnly') return productCopy.storage.cloudOnly;
   if (state === 'uploading') return productCopy.storage.uploading;
   if (state === 'waiting') return productCopy.storage.waitingToUpload;
@@ -119,4 +129,15 @@ export function storageStateLabel(state: StorageState, error?: string | null): s
 }
 
 /** @deprecated Storage state is user-facing; use storageStateLabel instead. */
-export function backupStateLabel(state: TransferState, error?: string | null): string { return state === 'synced' ? productCopy.storage.backedUp : state === 'uploading' ? productCopy.storage.uploading : state === 'queued' ? productCopy.storage.waitingToUpload : error ?? productCopy.storage.failed; }
+export function backupStateLabel(
+  state: TransferState,
+  error?: string | null,
+): string {
+  return state === 'synced'
+    ? productCopy.storage.backedUp
+    : state === 'uploading'
+      ? productCopy.storage.uploading
+      : state === 'queued'
+        ? productCopy.storage.waitingToUpload
+        : (error ?? productCopy.storage.failed);
+}

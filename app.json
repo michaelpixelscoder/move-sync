@@ -30,9 +30,7 @@
         "expo-media-library",
         {
           "photosPermission": "Move Sync needs access to your videos so you can choose collections to sync.",
-          "granularPermissions": [
-            "video"
-          ],
+          "granularPermissions": ["video"],
           "isAccessMediaLocationEnabled": true
         }
       ],

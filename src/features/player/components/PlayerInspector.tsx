@@ -4,7 +4,110 @@ import type { MediaRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
 import { formatBytes, formatDate, formatDuration } from '../../../lib/format';
 import { productCopy, storageStateLabel } from '../../../content/productCopy';
-import { DetailPanel, StatusRow } from '../../../components/layout/PagePrimitives';
+import {
+  DetailPanel,
+  StatusRow,
+} from '../../../components/layout/PagePrimitives';
 import { Button } from '../../../components/ui/Button';
-export function PlayerInspector({ item, busy, onShare, onDeleteCloud, onDeleteLocal, compact = false }: { item: MediaRecord; busy: boolean; onShare: () => void; onDeleteCloud: () => void; onDeleteLocal?: () => void; compact?: boolean }) { const rows = [['folder-outline', 'Size', formatBytes(item.sizeBytes)], ['time-outline', 'Duration', formatDuration(item.durationMs)], ['calendar-outline', 'Date', formatDate(item.createdAt)], ['location-outline', 'Location', item.locationName ?? 'Not recorded'], ['albums-outline', 'Device collection', item.collectionName ?? productCopy.player.noCollection]] as const; return <ScrollView style={[styles.scroll, compact && styles.compact]} contentContainerStyle={styles.content}><Text style={styles.title}>Details</Text><DetailPanel>{rows.map(([icon, label, value]) => <StatusRow key={label} icon={<Ionicons name={icon} size={19} color={theme.color.textSecondary} />} label={label} value={value} />)}<StatusRow icon={<Ionicons name="cloud-done-outline" size={19} color={item.storage.cloudAvailable ? theme.color.success : theme.color.textSecondary} />} label="Backed up to cloud" value={item.storage.cloudAvailable ? storageStateLabel(item.storage.state) : 'Not backed up'} tone={item.storage.cloudAvailable ? 'success' : 'default'} /></DetailPanel><View style={styles.actions}><Button label={productCopy.actions.share} icon="paper-plane-outline" loading={busy} onPress={onShare} />{onDeleteLocal ? <Button label={productCopy.actions.freePhoneStorage} icon="phone-portrait-outline" tone="secondary" disabled={busy} onPress={onDeleteLocal} /> : null}<Button label={productCopy.actions.removeFromCloud} icon="trash-outline" tone="danger" disabled={busy} onPress={onDeleteCloud} /></View></ScrollView>; }
-const styles = StyleSheet.create({ scroll: { width: 336, flexGrow: 0 }, compact: { width: '100%', maxHeight: 470 }, content: { gap: theme.space.md, paddingBottom: theme.space.md }, title: textStyles.sectionTitle, actions: { gap: theme.space.sm } });
+export function PlayerInspector({
+  item,
+  busy,
+  onShare,
+  onDeleteCloud,
+  onDeleteLocal,
+  compact = false,
+}: {
+  item: MediaRecord;
+  busy: boolean;
+  onShare: () => void;
+  onDeleteCloud: () => void;
+  onDeleteLocal?: () => void;
+  compact?: boolean;
+}) {
+  const rows = [
+    ['folder-outline', 'Size', formatBytes(item.sizeBytes)],
+    ['time-outline', 'Duration', formatDuration(item.durationMs)],
+    ['calendar-outline', 'Date', formatDate(item.createdAt)],
+    ['location-outline', 'Location', item.locationName ?? 'Not recorded'],
+    [
+      'albums-outline',
+      'Device collection',
+      item.collectionName ?? productCopy.player.noCollection,
+    ],
+  ] as const;
+  return (
+    <ScrollView
+      style={[styles.scroll, compact && styles.compact]}
+      contentContainerStyle={styles.content}
+    >
+      <Text style={styles.title}>Details</Text>
+      <DetailPanel>
+        {rows.map(([icon, label, value]) => (
+          <StatusRow
+            key={label}
+            icon={
+              <Ionicons
+                name={icon}
+                size={19}
+                color={theme.color.textSecondary}
+              />
+            }
+            label={label}
+            value={value}
+          />
+        ))}
+        <StatusRow
+          icon={
+            <Ionicons
+              name="cloud-done-outline"
+              size={19}
+              color={
+                item.storage.cloudAvailable
+                  ? theme.color.success
+                  : theme.color.textSecondary
+              }
+            />
+          }
+          label="Backed up to cloud"
+          value={
+            item.storage.cloudAvailable
+              ? storageStateLabel(item.storage.state)
+              : 'Not backed up'
+          }
+          tone={item.storage.cloudAvailable ? 'success' : 'default'}
+        />
+      </DetailPanel>
+      <View style={styles.actions}>
+        <Button
+          label={productCopy.actions.share}
+          icon="paper-plane-outline"
+          loading={busy}
+          onPress={onShare}
+        />
+        {onDeleteLocal ? (
+          <Button
+            label={productCopy.actions.freePhoneStorage}
+            icon="phone-portrait-outline"
+            tone="secondary"
+            disabled={busy}
+            onPress={onDeleteLocal}
+          />
+        ) : null}
+        <Button
+          label={productCopy.actions.removeFromCloud}
+          icon="trash-outline"
+          tone="danger"
+          disabled={busy}
+          onPress={onDeleteCloud}
+        />
+      </View>
+    </ScrollView>
+  );
+}
+const styles = StyleSheet.create({
+  scroll: { width: 336, flexGrow: 0 },
+  compact: { width: '100%', maxHeight: 470 },
+  content: { gap: theme.space.md, paddingBottom: theme.space.md },
+  title: textStyles.sectionTitle,
+  actions: { gap: theme.space.sm },
+});

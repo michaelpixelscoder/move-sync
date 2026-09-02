@@ -1,7 +1,62 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { theme, textStyles } from '../../theme/tokens';
 import { Button } from './Button';
-export function LoadingState({ label = 'Loading…' }: { label?: string }) { return <View style={styles.wrap}><ActivityIndicator color={theme.color.accent} /><Text style={styles.text}>{label}</Text></View>; }
-export function EmptyState({ title, message, action, onAction }: { title: string; message: string; action?: string; onAction?: () => void }) { return <View style={styles.wrap}><Text style={styles.title}>{title}</Text><Text style={styles.text}>{message}</Text>{action && onAction ? <Button label={action} onPress={onAction} /> : null}</View>; }
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) { return <View style={styles.wrap}><Text style={styles.title}>Something went wrong</Text><Text style={styles.error}>{message}</Text>{onRetry ? <Button label="Try again" onPress={onRetry} /> : null}</View>; }
-const styles = StyleSheet.create({ wrap: { flex: 1, minHeight: 240, padding: theme.space.xl, gap: theme.space.sm, alignItems: 'center', justifyContent: 'center' }, title: { ...textStyles.sectionTitle, textAlign: 'center' }, text: { ...textStyles.body, color: theme.color.textSecondary, textAlign: 'center' }, error: { ...textStyles.body, color: theme.color.danger, textAlign: 'center' } });
+export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <View style={styles.wrap}>
+      <ActivityIndicator color={theme.color.accent} />
+      <Text style={styles.text}>{label}</Text>
+    </View>
+  );
+}
+export function EmptyState({
+  title,
+  message,
+  action,
+  onAction,
+}: {
+  title: string;
+  message: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View style={styles.wrap}>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.text}>{message}</Text>
+      {action && onAction ? <Button label={action} onPress={onAction} /> : null}
+    </View>
+  );
+}
+export function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <View style={styles.wrap}>
+      <Text style={styles.title}>Something went wrong</Text>
+      <Text style={styles.error}>{message}</Text>
+      {onRetry ? <Button label="Try again" onPress={onRetry} /> : null}
+    </View>
+  );
+}
+const styles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    minHeight: 240,
+    padding: theme.space.xl,
+    gap: theme.space.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { ...textStyles.sectionTitle, textAlign: 'center' },
+  text: {
+    ...textStyles.body,
+    color: theme.color.textSecondary,
+    textAlign: 'center',
+  },
+  error: { ...textStyles.body, color: theme.color.danger, textAlign: 'center' },
+});

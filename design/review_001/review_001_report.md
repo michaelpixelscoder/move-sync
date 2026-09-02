@@ -76,13 +76,13 @@ The result is visually disconnected.
 
 The hierarchy is also very flat:
 
-* small logo,
-* small eyebrow “MOVE SYNC,”
-* large title,
-* segmented control,
-* cards,
-* tiny metadata,
-* tiny sync status.
+- small logo,
+- small eyebrow “MOVE SYNC,”
+- large title,
+- segmented control,
+- cards,
+- tiny metadata,
+- tiny sync status.
 
 Nothing really establishes a sophisticated rhythm.
 
@@ -181,20 +181,20 @@ The library needs search from the start.
 
 Search should work against:
 
-* filename/title,
-* date,
-* collection,
-* location if available.
+- filename/title,
+- date,
+- collection,
+- location if available.
 
 Later, you could add smarter metadata, but simple search is enough initially.
 
 Filters could include:
 
-* Recent
-* Collection
-* Device
-* Duration
-* Upload state
+- Recent
+- Collection
+- Device
+- Duration
+- Upload state
 
 Do not expose all of these permanently. Put the secondary ones behind a filter control.
 
@@ -208,13 +208,13 @@ People doing dance, yoga or movement are unlikely to mentally organize everythin
 
 They have natural contexts:
 
-* Ballet class
-* Improvisation
-* Workshop — Berlin
-* Yoga training
-* Floorwork
-* Rehearsals
-* Personal practice
+- Ballet class
+- Improvisation
+- Workshop — Berlin
+- Yoga training
+- Floorwork
+- Rehearsals
+- Personal practice
 
 The app should preserve those contexts.
 
@@ -337,10 +337,10 @@ or, if needed:
 
 The advanced options can live under a small settings section:
 
-* Wi-Fi only
-* While charging
-* Include existing videos
-* Remove local copy after backup
+- Wi-Fi only
+- While charging
+- Include existing videos
+- Remove local copy after backup
 
 The main screen should not feel like configuring a sync daemon.
 
@@ -407,16 +407,16 @@ But there are several UX problems.
 
 The top of the page currently has:
 
-* back,
-* title,
-* share icon,
-* info icon.
+- back,
+- title,
+- share icon,
+- info icon.
 
 Then the side panel also contains:
 
-* information,
-* Share video,
-* Delete cloud copy.
+- information,
+- Share video,
+- Delete cloud copy.
 
 This duplicates actions and makes it unclear what the info button actually does when the panel is already visible.
 
@@ -461,10 +461,10 @@ But it should be visually quieter than the video itself.
 
 The screenshot has title/duration information in several places:
 
-* title in the header,
-* title beneath the video,
-* duration in native controls,
-* duration in Details.
+- title in the header,
+- title beneath the video,
+- duration in native controls,
+- duration in Details.
 
 Repetition contributes to the prototype feeling.
 
@@ -577,12 +577,12 @@ This creates the dashboard/prototype feeling.
 
 Modern interfaces rely much more on:
 
-* spacing,
-* typography,
-* alignment,
-* layering,
-* imagery,
-* subtle surface differentiation.
+- spacing,
+- typography,
+- alignment,
+- layering,
+- imagery,
+- subtle surface differentiation.
 
 Use fewer visible boxes.
 
@@ -748,12 +748,12 @@ You obviously cannot control the content, but you can control presentation.
 
 Use:
 
-* fixed aspect ratio,
-* consistent crop,
-* subtle thumbnail gradient at the bottom,
-* duration overlay,
-* hover treatment,
-* optional preview on hover on desktop.
+- fixed aspect ratio,
+- consistent crop,
+- subtle thumbnail gradient at the bottom,
+- duration overlay,
+- hover treatment,
+- optional preview on hover on desktop.
 
 That will immediately make the grid feel closer to a video product.
 
@@ -1068,12 +1068,12 @@ Not flashy animation.
 
 Small details:
 
-* thumbnail subtly fades in after backup,
-* progress transitions smoothly,
-* finished upload transforms from progress bar into a check,
-* details panel glides in,
-* video card hover gently lifts,
-* storage-recovered number animates when cleanup finishes.
+- thumbnail subtly fades in after backup,
+- progress transitions smoothly,
+- finished upload transforms from progress bar into a check,
+- details panel glides in,
+- video card hover gently lifts,
+- storage-recovered number animates when cleanup finishes.
 
 Around 150–250ms for most transitions.
 
@@ -1087,13 +1087,13 @@ The current dark interface should be checked carefully for contrast, especially 
 
 I would also ensure:
 
-* minimum 44×44 touch targets on mobile,
-* visible keyboard focus states,
-* buttons have text or accessible labels,
-* status is never communicated only through color,
-* destructive actions are not adjacent to common actions,
-* reduced-motion support,
-* captions/subtitles supported by the player where available.
+- minimum 44×44 touch targets on mobile,
+- visible keyboard focus states,
+- buttons have text or accessible labels,
+- status is never communicated only through color,
+- destructive actions are not adjacent to common actions,
+- reduced-motion support,
+- captions/subtitles supported by the player where available.
 
 ---
 
@@ -1148,13 +1148,13 @@ I would **not** redesign everything just to appear fashionable.
 
 Keep:
 
-* dark-first interface,
-* video grid,
-* simple navigation,
-* prominent upload,
-* side inspector on large screens,
-* bottom details sheet on mobile,
-* lightweight application structure.
+- dark-first interface,
+- video grid,
+- simple navigation,
+- prominent upload,
+- side inspector on large screens,
+- bottom details sheet on mobile,
+- lightweight application structure.
 
 The current product is refreshingly uncomplicated.
 
