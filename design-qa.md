@@ -1,57 +1,41 @@
-# Move Sync Design QA
+**Comparison target**
 
-## Component review criteria
+- Source visual truth: `/home/michael/t3code/data/userdata/attachments/1fd2d6dd-19a1-454f-932d-145b84bb5a44-cd72e484-5b7f-4065-b0ce-a280e8c34bda.png`
+- Current-state reference: `/home/michael/t3code/data/userdata/attachments/1fd2d6dd-19a1-454f-932d-145b84bb5a44-0365225f-e681-4439-9c03-46c350dadddb.png`
+- Intended state: a completed cloud-backed media card on mobile.
+- Source dimensions: 253 × 212 px. The implementation target is the card content region at the iPhone 12 Pro CSS viewport (390 × 844); no density normalization was needed for the source inspection.
 
-- Use semantic `theme` tokens and shared page/control primitives. Do not add ad-hoc color, radius, spacing, or breakpoint literals inside screen components.
-- Let spacing and soft surface changes establish groups. Hairline dividers are for dense status/list rows only; cards and sections should not be boxed by default.
-- Reserve blue for primary actions and selected state; reserve success, warning, and danger for meaningful storage or error conditions. Every color-led state needs text or an icon too.
-- Keep a video thumbnail or playback surface as the first visual priority. Metadata is compact and supplemental; page titles, section titles, card titles, meta, and status use the shared type hierarchy.
-- All interactive controls retain a 44px touch target, an accessible label, and visible pressed/hover or focus feedback. Motion uses the shared 150–250ms durations and must remain optional.
+**Findings**
 
-## Storage-data review criteria
+- [P1] Verbose metadata increased the card footer from the compact reference treatment to multiple independent rows.
+  Location: `MediaCard` metadata and body.
+  Evidence: the prior implementation rendered the date and size separately, used a two-line title, and reserved 115 px for the footer. The source uses a one-line title and one combined `date · size` row.
+  Impact: media cards became noticeably taller and less scan-friendly.
+  Fix: completed. Metadata now uses one title line, one combined details line, 84 px of normal footer space, and a 16 px cloud-status row.
 
-- UI storage labels come from the server-derived storage model, never raw transfer state. Cloud and local availability are independent facts.
-- Offer local removal only when `safeToRemoveLocal` is true; that flag requires a verified Convex Storage object.
-- Do not show a `used of total` capacity meter until an entitlement source defines the plan limit. The library summary intentionally exposes verified usage and reclaimable bytes only.
+**Required fidelity surfaces**
 
-- Source visual truth: user-provided desktop screenshots in `/home/michael/t3code/data/userdata/attachments/ba2bd92f-a9be-4f34-8432-7dc3eabe1a35-*.png`.
-- Design direction: sober, professional desktop workspace; eliminate the stretched mobile-navigation treatment and uncontrolled desktop spacing.
-- Implementation evidence: `artifacts/desktop-library.png`, `artifacts/desktop-autosync.png`, `artifacts/web-player.png`, and `artifacts/mobile-library.png`.
-- Viewport: 1920 × 1080 CSS px, device scale factor 1.
-- State: synced library, web AutoSync explanation, and cloud player details.
+- Fonts and typography: title and metadata keep the established card-title/meta token hierarchy; truncation is now one line for both, matching the compact source hierarchy.
+- Spacing and layout rhythm: thumbnail remains the visual hero; footer minimum height reduced from 115 px to 84 px, with 12 px token padding and a 44 px action touch target.
+- Colors and visual tokens: existing surface, muted metadata, cloud-success, duration-overlay, and focus tokens are unchanged.
+- Image quality and asset fidelity: existing media thumbnail asset, crop, gradient, and duration badge are unchanged; no generated or substitute assets were introduced.
+- Copy and content: the metadata is now presented as `date · size`, matching the concept's content density.
 
-## Comparison history
+**Verification**
 
-### Pass 1 — blocked
+- `npm run typecheck` passed.
+- `npm test -- --runInBand` passed.
+- The collaborative preview was opened and resized to iPhone 12 Pro, but its snapshot/evaluation actions timed out before a rendered implementation image could be captured. No browser-rendered screenshot path is available, and primary browser interactions could not be rechecked. The local Expo web server is running on port 8081.
 
-- Finding [P1]: desktop navigation items expanded vertically to fill the rail, giving the product a mobile-tab appearance.
-- Finding [P1]: media content used an inconsistent left-aligned max-width region, leaving an unstructured desktop canvas.
-- Finding [P1]: the AutoSync web state was a floating empty message without a clear desktop surface.
+**Implementation checklist**
 
-### Pass 2 — accepted
+- [x] Condense title to one line.
+- [x] Combine date and size into one line.
+- [x] Reduce normal footer height and vertical gaps.
+- [x] Retain cloud reassurance and the overflow action.
 
-- Fixed: the rail now uses compact, top-aligned navigation with a stable brand and section label.
-- Fixed: desktop media and player views use centered content frames, coherent horizontal alignment, and a consistent three-column grid.
-- Fixed: AutoSync now has an intentional information panel with a clear device boundary.
-- Fixed: changing web routes resets document scroll so a new screen never begins clipped.
+**Follow-up polish**
 
-## Required fidelity surfaces
+- Capture the mobile card once preview automation responds, then compare it directly with the source crop.
 
-- Typography: a restrained two-level hierarchy with 30px page titles, compact uppercase labels, and readable 12–14px metadata. No wrapping or clipping is visible in the inspected desktop states.
-- Spacing and layout rhythm: 236px fixed rail; 1040px and 1400px content frames by screen; 16–22px grid and panel spacing; no stretched navigation states.
-- Colors and tokens: restrained near-black canvas, slate panels, a single blue action color, and semantic red only for destructive action.
-- Image quality: cards and player use the actual stored video thumbnails and cloud video; no placeholder assets were introduced.
-- Copy: web AutoSync clearly says configuration occurs on the phone, while the rest of the application remains concise and action-led.
-
-## Findings
-
-- No actionable P0, P1, or P2 visual findings remain at the checked desktop viewport.
-- [P3] A remote video may show its native browser loading spinner briefly before playback metadata arrives. This is a browser-media loading state, not a layout regression.
-
-## Browser checks
-
-- Library, player metadata, long-press selection/share, and AutoSync navigation were exercised with Playwright.
-- Desktop captures were inspected at 1920 × 1080. Mobile library and bottom navigation were inspected at 390 × 844 with no horizontal overflow.
-- No browser console errors were observed in the player workflow.
-
-final result: passed
+final result: blocked

@@ -4,7 +4,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { MediaCard } from '../src/features/media/components/MediaCard';
 import { Button } from '../src/components/ui/Button';
 import { AppNavigation } from '../src/components/layout/AppNavigation';
-import { formatBytes, formatDuration, titleFromFilename } from '../src/lib/format';
+import { formatBytes, formatDuration, formatMediaCaptureDate, titleFromFilename } from '../src/lib/format';
 import { backupStateLabel } from '../src/content/productCopy';
 import type { MediaRecord } from '../src/types/domain';
 
@@ -14,8 +14,14 @@ const item = { _id: 'media-id', filename: 'VID_20260831.mp4', mimeType: 'video/m
 
 describe('shared UI and formatters', () => {
   it('formats actual media metadata for the UI', () => { expect(formatBytes(1_572_864)).toBe('1.5 MB'); expect(formatDuration(65_000)).toBe('1:05'); expect(titleFromFilename('VID_20260831.mp4')).toBe('VID 20260831'); });
+  it('uses human capture dates that stay useful as media ages', () => {
+    const now = new Date(2026, 8, 2, 10, 30);
+    expect(formatMediaCaptureDate(new Date(2026, 8, 2, 8, 30).getTime(), now)).toBe('2 hours ago');
+    expect(formatMediaCaptureDate(new Date(2026, 8, 2, 1, 0).getTime(), now)).toBe('Today, 1:00 am');
+    expect(formatMediaCaptureDate(new Date(2026, 7, 23, 12, 0).getTime(), now)).toBe('23 August');
+  });
   it('uses customer-facing backup state language', () => { expect(backupStateLabel('synced')).toBe('Backed up'); expect(backupStateLabel('queued')).toBe('Waiting to upload'); expect(backupStateLabel('error', 'Network unavailable')).toBe('Network unavailable'); });
-  it('opens a media card and supports long-press selection', () => { const onPress = jest.fn(); const onLongPress = jest.fn(); const ui = render(<MediaCard item={item} desktop={false} selected={false} onPress={onPress} onLongPress={onLongPress} />); fireEvent.press(ui.getByLabelText('VID_20260831.mp4, Backed up')); fireEvent(ui.getByLabelText('VID_20260831.mp4, Backed up'), 'longPress'); expect(onPress).toHaveBeenCalledTimes(1); expect(onLongPress).toHaveBeenCalledTimes(1); });
+  it('opens a media card and supports long-press selection', () => { const onPress = jest.fn(); const onLongPress = jest.fn(); const ui = render(<MediaCard item={item} desktop={false} selected={false} onPress={onPress} onLongPress={onLongPress} />); expect(ui.getByText(/· 1\.5 MB/)).toBeTruthy(); fireEvent.press(ui.getByLabelText('VID_20260831.mp4, Backed up')); fireEvent(ui.getByLabelText('VID_20260831.mp4, Backed up'), 'longPress'); expect(onPress).toHaveBeenCalledTimes(1); expect(onLongPress).toHaveBeenCalledTimes(1); });
   it('keeps missing thumbnails, capture metadata, and upload progress intentional', () => {
     const uploading = { ...item, filename: 'A very long movement rehearsal title that should remain readable.mp4', transferState: 'uploading' as const, storage: { ...item.storage, state: 'uploading' as const, cloudAvailable: false, safeToRemoveLocal: false } };
     const ui = render(<MediaCard item={uploading} width={148} selected={false} progress={.42} onPress={jest.fn()} onLongPress={jest.fn()} />);
