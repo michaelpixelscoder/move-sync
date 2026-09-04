@@ -1,10 +1,14 @@
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 
-const CLIENT_KEY_STORAGE = 'move-sync/client-key/v1';
+const CLIENT_KEY_STORAGE = 'move-sync.client-key.v1';
 
 /** A per-device capability key, stored in the platform's encrypted keychain. */
 export async function getClientKey() {
+  const configuredKey =
+    process.env.EXPO_PUBLIC_CLIENT_KEY ??
+    process.env.EXPO_PUBLIC_E2E_CLIENT_KEY;
+  if (configuredKey) return configuredKey;
   const existing = await SecureStore.getItemAsync(CLIENT_KEY_STORAGE);
   if (existing) return existing;
   const key = `${Crypto.randomUUID()}-${Crypto.randomUUID()}`;

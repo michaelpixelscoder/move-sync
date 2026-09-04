@@ -121,6 +121,6 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
 }
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  scroll: { flex: 1 },
+  scroll: { flexGrow: 1 },
   content: { paddingBottom: 110 },
 });

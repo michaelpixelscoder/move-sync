@@ -353,7 +353,7 @@ function emptyCopy(
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  scroll: { flex: 1 },
+  scroll: { flexGrow: 1 },
   content: { paddingBottom: 112 },
   section: { marginBottom: theme.space.xl, gap: theme.space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },

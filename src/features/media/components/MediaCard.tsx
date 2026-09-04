@@ -46,11 +46,12 @@ export function MediaCard({
 }: Props) {
   const title = titleFromFilename(item.filename);
   const stateLabel = storageStateLabel(item.storage.state, item.syncError);
+  const minHeight = width ? Math.ceil(width * (10 / 16) + 68) : undefined;
   return (
     <View
       style={[
         styles.card,
-        width ? { width } : styles.defaultWidth,
+        width ? { width, minHeight } : styles.defaultWidth,
         selected && styles.selected,
       ]}
     >
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.surface,
     overflow: 'hidden',
   },
-  cardPressable: { flex: 1 },
+  cardPressable: { flexGrow: 0 },
   defaultWidth: { width: 260 },
   selected: { backgroundColor: theme.color.surfaceSelected },
   interaction: { opacity: 0.86 },

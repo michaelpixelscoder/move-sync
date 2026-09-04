@@ -34,7 +34,8 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withShortAndroidCmakePaths"
     ]
   }
 }
