@@ -1,20 +1,14 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
-import { api } from '../../convex/_generated/api';
-import { convex } from '../lib/convex';
 import { getClientKey } from '../lib/session';
-import { syncCollection } from '../features/autosync/services/syncCollection';
+import { syncEnabledCollections } from '../features/autosync/services/syncEnabledCollections';
 
 const TASK_NAME = 'move-sync-enabled-collections';
 
 TaskManager.defineTask(TASK_NAME, async () => {
   try {
     const clientKey = await getClientKey();
-    const collections = await convex.query(api.collections.listEnabled, {
-      clientKey,
-    });
-    for (const collection of collections)
-      await syncCollection(clientKey, collection);
+    await syncEnabledCollections(clientKey);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (error) {
     console.error('Move Sync background task failed', error);

@@ -2,7 +2,6 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
-import type { CollectionRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
 import { EmptyState, LoadingState } from '../../../components/ui/ScreenState';
 import { productCopy } from '../../../content/productCopy';
@@ -27,7 +26,7 @@ export function CollectionsScreen({ clientKey }: { clientKey: string }) {
           <ContentFrame width="default" style={styles.content}>
             <DetailPanel>
               {rows.map((row) => (
-                <CollectionRow key={row._id} item={row as CollectionRecord} />
+                <CollectionRow key={row._id} item={row} />
               ))}
             </DetailPanel>
           </ContentFrame>
@@ -42,7 +41,11 @@ export function CollectionsScreen({ clientKey }: { clientKey: string }) {
   );
 }
 
-function CollectionRow({ item }: { item: CollectionRecord }) {
+function CollectionRow({
+  item,
+}: {
+  item: { name: string; videoCount: number; autoSync: boolean };
+}) {
   return (
     <View style={styles.row}>
       <View style={styles.icon}>

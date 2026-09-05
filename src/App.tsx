@@ -5,6 +5,7 @@ import { AppProviders } from './providers/AppProviders';
 import { useClientKey } from './hooks/useClientKey';
 import { useDevicePresence } from './hooks/useDevicePresence';
 import { useLibrarySummaryRebuild } from './hooks/useLibrarySummaryRebuild';
+import { useAutoSync } from './hooks/useAutoSync';
 import type { Screen } from './navigation/types';
 import { AppShell } from './components/layout/AppShell';
 import { LoadingState, ErrorState } from './components/ui/ScreenState';
@@ -29,6 +30,7 @@ function MoveSync() {
   const { clientKey, error } = useClientKey();
   useDevicePresence(clientKey);
   useLibrarySummaryRebuild(clientKey);
+  useAutoSync(clientKey);
   useEffect(() => {
     if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
   }, [screen.name]);

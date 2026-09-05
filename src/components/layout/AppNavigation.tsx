@@ -60,6 +60,13 @@ export function AppNavigation({
       />
       <NavItem
         desktop={false}
+        label={productCopy.navigation.collections}
+        icon="list-outline"
+        active={screen.name === 'playlists' || screen.name === 'playlist'}
+        onPress={() => onNavigate({ name: 'playlists' })}
+      />
+      <NavItem
+        desktop={false}
         label={productCopy.navigation.backup}
         icon="cloud-upload-outline"
         active={screen.name === 'backup'}
@@ -194,10 +201,10 @@ const styles = StyleSheet.create({
   },
   bottom: {
     height: theme.size.bottomNavigation,
-    paddingHorizontal: theme.space.md,
+    paddingHorizontal: theme.space.sm,
     backgroundColor: theme.color.surface,
     flexDirection: 'row',
-    gap: theme.space.xs,
+    gap: theme.space.xxs,
   },
   logo: {
     height: theme.size.touch,
@@ -258,7 +265,7 @@ const styles = StyleSheet.create({
   },
   bottomItem: {
     flex: 1,
-    paddingHorizontal: theme.space.xs,
+    paddingHorizontal: theme.space.xxs,
     justifyContent: 'center',
   },
   active: { backgroundColor: theme.color.surfaceSelected },

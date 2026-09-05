@@ -45,6 +45,7 @@ export type CollectionRecord = {
   videoCount: number;
   autoSync: boolean;
   isAvailable: boolean;
+  playlistIds: Id<'playlists'>[];
 };
 export type UploadProgress = {
   key: string;

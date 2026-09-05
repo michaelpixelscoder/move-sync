@@ -1,4 +1,11 @@
-import { Platform, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { CollectionRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
@@ -55,10 +62,12 @@ export function BackupCollectionList({
   rows,
   busy,
   onChange,
+  onManagePlaylists,
 }: {
   rows: CollectionRecord[];
   busy: boolean;
   onChange: (collection: CollectionRecord, enabled: boolean) => void;
+  onManagePlaylists: (collection: CollectionRecord) => void;
 }) {
   return (
     <View style={styles.collections}>
@@ -70,6 +79,7 @@ export function BackupCollectionList({
             item={item}
             busy={busy}
             onChange={(value) => onChange(item, value)}
+            onManagePlaylists={() => onManagePlaylists(item)}
           />
         ))}
       </DetailPanel>
@@ -80,10 +90,12 @@ function CollectionRow({
   item,
   busy,
   onChange,
+  onManagePlaylists,
 }: {
   item: CollectionRecord;
   busy: boolean;
   onChange: (value: boolean) => void;
+  onManagePlaylists: () => void;
 }) {
   return (
     <View style={styles.row}>
@@ -100,6 +112,18 @@ function CollectionRow({
           {item.videoCount} video{item.videoCount === 1 ? '' : 's'} ·{' '}
           {item.assetCount} total items
         </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Attach ${item.name} to playlists`}
+          onPress={onManagePlaylists}
+          hitSlop={8}
+        >
+          <Text style={styles.rowPlaylists}>
+            {item.playlistIds.length
+              ? `${item.playlistIds.length} playlist${item.playlistIds.length === 1 ? '' : 's'} attached`
+              : 'Attach to playlists'}
+          </Text>
+        </Pressable>
       </View>
       <Switch
         accessibilityLabel={`${item.name} automatic backup`}
@@ -184,6 +208,11 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1 },
   rowTitle: textStyles.cardTitle,
   rowMeta: textStyles.meta,
+  rowPlaylists: {
+    ...textStyles.status,
+    color: theme.color.accent,
+    marginTop: theme.space.xxs,
+  },
   sync: {
     marginTop: theme.space.md,
     borderRadius: theme.radius.md,

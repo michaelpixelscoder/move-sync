@@ -1,14 +1,16 @@
 import { Album, MediaType } from 'expo-media-library';
 import { api } from '../../../../convex/_generated/api';
+import type { Id } from '../../../../convex/_generated/dataModel';
 import { convex } from '../../../lib/convex';
 import { uploadDeviceAsset } from '../../media/services/upload';
 
 export async function syncCollection(
   clientKey: string,
   collection: {
-    _id: import('../../../../convex/_generated/dataModel').Id<'collections'>;
+    _id: Id<'collections'>;
     localId: string;
     name: string;
+    playlistIds?: Id<'playlists'>[];
   },
   onItem?: (filename: string) => void,
 ) {
@@ -30,7 +32,23 @@ export async function syncCollection(
       ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
       : undefined;
     onItem?.(info.filename);
-    await uploadDeviceAsset(clientKey, info, collection, locationName);
+    const mediaId = await uploadDeviceAsset(
+      clientKey,
+      info,
+      collection,
+      locationName,
+    );
+    if (collection.playlistIds?.length) {
+      await Promise.all(
+        collection.playlistIds.map((playlistId) =>
+          convex.mutation(api.playlists.addMedia, {
+            clientKey,
+            playlistId,
+            mediaIds: [mediaId],
+          }),
+        ),
+      );
+    }
     uploaded += 1;
   }
   return uploaded;

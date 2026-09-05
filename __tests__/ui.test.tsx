@@ -148,9 +148,11 @@ describe('shared UI and formatters', () => {
       />,
     );
     expect(mobile.getByRole('button', { name: 'Videos' })).toBeTruthy();
+    expect(mobile.getByRole('button', { name: 'Playlists' })).toBeTruthy();
     expect(mobile.getByRole('button', { name: 'Backup' })).toBeTruthy();
     expect(mobile.getByRole('button', { name: 'Settings' })).toBeTruthy();
-    expect(mobile.queryByRole('button', { name: 'Playlists' })).toBeNull();
+    fireEvent.press(mobile.getByRole('button', { name: 'Playlists' }));
+    expect(onNavigate).toHaveBeenCalledWith({ name: 'playlists' });
     fireEvent.press(mobile.getByRole('button', { name: 'Settings' }));
     expect(onNavigate).toHaveBeenCalledWith({ name: 'settings' });
   });

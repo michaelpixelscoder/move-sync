@@ -28,7 +28,13 @@ export function BottomSheet({
         onPress={onClose}
       />
       <View accessibilityViewIsModal style={styles.sheet}>
-        <View style={styles.handle} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          hitSlop={theme.space.sm}
+          onPress={onClose}
+          style={styles.handle}
+        />
         <View style={styles.close}>
           <IconButton label={label} name="close" onPress={onClose} />
         </View>
@@ -54,5 +60,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: theme.color.textTertiary,
   },
-  close: { position: 'absolute', top: theme.space.xs, right: theme.space.xs },
+  close: {
+    position: 'absolute',
+    top: theme.space.xs,
+    right: theme.space.xs,
+    zIndex: 1,
+    elevation: 1,
+  },
 });

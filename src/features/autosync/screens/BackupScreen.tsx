@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
+import type { Id } from '../../../../convex/_generated/dataModel';
 import type { CollectionRecord } from '../../../types/domain';
 import { Button } from '../../../components/ui/Button';
 import {
@@ -11,6 +12,15 @@ import {
 } from '../../../components/ui/ScreenState';
 import { readDeviceCollections } from '../services/deviceCollections';
 import { syncCollection } from '../services/syncCollection';
+import {
+  applyAutoSyncPreferences,
+  readAutoSyncCollectionIds,
+  setAutoSyncCollectionId,
+} from '../services/autoSyncPreferences';
+import {
+  applyCollectionPlaylistPreferences,
+  readCollectionPlaylistMap,
+} from '../services/collectionPlaylistPreferences';
 import { productCopy } from '../../../content/productCopy';
 import {
   ContentFrame,
@@ -22,21 +32,38 @@ import {
   BackupSyncNotice,
   BackupWebNotice,
 } from '../components/BackupSections';
+import { CollectionPlaylistPicker } from '../components/CollectionPlaylistPicker';
 
 export function BackupScreen({ clientKey }: { clientKey: string }) {
-  const rows = useQuery(api.collections.list, { clientKey });
+  const serverRows = useQuery(
+    api.collections.list,
+    Platform.OS === 'web' ? { clientKey } : 'skip',
+  );
   const reconcile = useMutation(api.collections.reconcile);
-  const setAutoSync = useMutation(api.collections.setAutoSync);
+  const [deviceRows, setDeviceRows] = useState<CollectionRecord[]>();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState<string>();
   const [error, setError] = useState<string>();
+  const [managingCollection, setManagingCollection] =
+    useState<CollectionRecord>();
+  const rows = Platform.OS === 'web' ? serverRows : deviceRows;
   const refresh = async () => {
     if (Platform.OS === 'web') return;
     try {
       setRefreshing(true);
       setError(undefined);
       const collections = await readDeviceCollections();
-      await reconcile({ clientKey, collections });
+      const [enabledIds, playlistMap, reconciled] = await Promise.all([
+        readAutoSyncCollectionIds(),
+        readCollectionPlaylistMap(),
+        reconcile({ clientKey, collections }),
+      ]);
+      setDeviceRows(
+        applyCollectionPlaylistPreferences(
+          applyAutoSyncPreferences(reconciled, enabledIds),
+          playlistMap,
+        ),
+      );
     } catch (value) {
       setError(
         value instanceof Error
@@ -53,7 +80,14 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   const toggle = async (collection: CollectionRecord, enabled: boolean) => {
     try {
       setError(undefined);
-      await setAutoSync({ clientKey, collectionId: collection._id, enabled });
+      await setAutoSyncCollectionId(collection.localId, enabled);
+      setDeviceRows((current) =>
+        current?.map((row) =>
+          row.localId === collection.localId
+            ? { ...row, autoSync: enabled }
+            : row,
+        ),
+      );
       if (enabled) {
         setSyncing(collection.name);
         await syncCollection(clientKey, collection);
@@ -67,6 +101,18 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
     } finally {
       setSyncing(undefined);
     }
+  };
+  const updatePlaylists = (localId: string, playlistIds: Id<'playlists'>[]) => {
+    setDeviceRows((current) =>
+      current?.map((row) =>
+        row.localId === localId ? { ...row, playlistIds } : row,
+      ),
+    );
+    setManagingCollection((current) =>
+      current && current.localId === localId
+        ? { ...current, playlistIds }
+        : current,
+    );
   };
   if (rows === undefined)
     return <LoadingState label={productCopy.backup.loading} />;
@@ -104,6 +150,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
               rows={rows as CollectionRecord[]}
               busy={Boolean(syncing)}
               onChange={toggle}
+              onManagePlaylists={setManagingCollection}
             />
             {syncing ? <BackupSyncNotice name={syncing} /> : null}
           </ContentFrame>
@@ -116,6 +163,12 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
           onAction={refresh}
         />
       )}
+      <CollectionPlaylistPicker
+        clientKey={clientKey}
+        collection={managingCollection}
+        onChange={updatePlaylists}
+        onClose={() => setManagingCollection(undefined)}
+      />
     </View>
   );
 }
