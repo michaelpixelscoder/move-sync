@@ -4,6 +4,7 @@ export async function readDeviceCollections(): Promise<
     name: string;
     assetCount: number;
     videoCount: number;
+    sizeBytes: number;
   }>
 > {
   return [];

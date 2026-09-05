@@ -1,4 +1,4 @@
-import { format, formatDistanceStrict, isToday } from 'date-fns';
+import { format, formatDistanceStrict, isSameDay } from 'date-fns';
 
 export function formatBytes(bytes: number) {
   if (bytes <= 0) return 'Unknown size';
@@ -31,7 +31,7 @@ export function formatMediaCaptureDate(value: number, now = new Date()) {
     Math.abs(now.getTime() - capturedAt.getTime()) / (60 * 60 * 1000);
   if (hoursSinceCapture < 6)
     return formatDistanceStrict(capturedAt, now, { addSuffix: true });
-  if (isToday(capturedAt))
+  if (isSameDay(capturedAt, now))
     return `Today, ${format(capturedAt, 'h:mm a').toLowerCase()}`;
   return format(
     capturedAt,

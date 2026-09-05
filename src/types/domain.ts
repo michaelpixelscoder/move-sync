@@ -46,6 +46,8 @@ export type CollectionRecord = {
   autoSync: boolean;
   isAvailable: boolean;
   playlistIds: Id<'playlists'>[];
+  /** Total bytes occupied by videos in this device-local collection. */
+  sizeBytes?: number;
 };
 export type UploadProgress = {
   key: string;

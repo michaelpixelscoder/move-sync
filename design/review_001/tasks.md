@@ -5,9 +5,9 @@
 - **[S1 — Redesign review](presentation/move_sync_rev001_presentation_01.png):** Overall before/after direction; desktop cloud library and mobile Backup.
 - **[S2 — Product strategy](presentation/move_sync_rev001_presentation_02.png):** Core promise and distinct mobile (capture/confidence) versus web (access/organization/replay) roles.
 - **[S3 — Information architecture and language](presentation/move_sync_rev001_presentation_03.png):** Final terms, web/mobile navigation concepts, and progressive status disclosure.
-- **[S4 — Desktop library](presentation/move_sync_rev001_presentation_04.png):** Wide library, card anatomy, scopes, search/filter/sort, upload activity, cloud-capacity indicator, and account area.
+- **[S4 — Desktop library](presentation/move_sync_rev001_presentation_04.png):** Wide library, card anatomy, scopes, search/filter/sort, upload activity, cloud-capacity indicator, playlists, and account area.
 - **[S5 — Desktop player](presentation/move_sync_rev001_presentation_05.png):** Video-first player, calm inspector, storage-location rows, Share/overflow actions, and custom playback controls.
-- **[S6 — Mobile videos](presentation/move_sync_rev001_presentation_06.png):** Search-first recent videos, collection list, and long-press bulk-selection mode.
+- **[S6 — Mobile videos](presentation/move_sync_rev001_presentation_06.png):** Search-first recent videos, playlist list, and long-press bulk-selection mode.
 - **[S7 — Mobile Backup](presentation/move_sync_rev001_presentation_07.png):** Confidence summary, reclaimable-storage card, automatic-backup list, Wi-Fi preference, and storage-recovery success moment.
 - **[S8 — Design system and priorities](presentation/move_sync_rev001_presentation_08.png):** Exact visual tokens, type/component inventory, and screen-level priority order.
 
@@ -26,7 +26,7 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **1.4 Establish page hierarchy rules:** Specify one owner for each title, metadata field, status, and action so the library and player do not repeat information in headers, cards, captions, and inspectors. [Visual: S4, S5]
   - [x] **1.5 Create a shared product-copy module:** Move navigation labels, storage-state labels, empty-state text, destructive warnings, and accessibility wording out of screen components so copy remains consistent and testable. [Visual: S3, S7]
   - [x] **1.6 Update navigation and copy tests:** Replace assertions tied to `Medias`, `AutoSync`, `Synced`, and `Queue` in unit and Playwright tests with the new product vocabulary. [Visual: S3]
-  - [x] **1.7 Resolve and implement the final navigation contract:** Chose S4's desktop side rail for `Videos`, `Collections`, and `Backup`, because it better supports web library context and the future account/capacity area. Mobile follows S3 with `Videos`, `Backup`, and `Settings`; Collections and Settings now have usable destinations. [Visual: S3, S4]
+  - [x] **1.7 Resolve and implement the final navigation contract:** Chose S4's desktop side rail for `Videos`, `Playlists`, and `Backup`, because it better supports web library context and the future account/capacity area. Mobile now exposes `Videos`, `Playlists`, `Backup`, and `Settings`; playlists and Settings have usable destinations. Device-local collections remain inside Backup. [Visual: S3, S4]
 
 - **[x] Initiative 2: Build the responsive app shell and design-system foundations**
   **Brief:** Create a calm, media-first layout system shared by web and mobile. Match the premium dark visual language in S4–S8—spacing and soft surfaces rather than heavy borders—while removing repeated layout/style decisions from the three large screens.
@@ -76,17 +76,17 @@ The roadmap remains structural first: information architecture, shared shell, de
 - **[ ] Initiative 5: Make Backup and freeing space the core mobile experience**
   **Brief:** Replace the settings-like AutoSync page with the dedicated Backup destination in S7: a reassurance banner, a tangible free-space card, collection-level automatic backup, and one clear preference. This is the product’s signature mobile experience. [Visual: S2, S7]
   **Tasks:**
-  - [ ] **5.1 Recompose `AutoSyncScreen` as `BackupScreen`:** Extract confidence summary, reclaimable-storage card, automatic-backup collections, transfer activity, and advanced settings into independent sections. [Visual: S7]
-  - [ ] **5.2 Add the backup confidence summary:** Show `Everything is backed up`, last successful check, pending/failed counts, and an honest explanation when background work is delayed or unavailable. [Visual: S7]
-  - [ ] **5.3 Build the reclaimable-storage calculation:** List only device assets with verified cloud copies and total their bytes so `Free up {size}` and the supporting eligible-video count are precise. [Visual: S7]
-  - [ ] **5.4 Implement the multi-video free-space flow:** Present the eligible count and size, explain that cloud copies remain available, require confirmation, delete local assets in a recoverable batch workflow, record each successful removal, and report partial failures.
-    - [ ] 5.4.1 Use Expo MediaLibrary’s SDK 57 asset APIs and handle platform permission/confirmation behavior explicitly.
-    - [ ] 5.4.2 Never mark an item local-removed until device deletion succeeds.
-    - [ ] 5.4.3 Finish with a clear `storage freed` success moment and refresh the summary.
-  - [ ] **5.5 Redesign automatic-backup collection controls:** Show collection thumbnail, name, enabled state, and a detail affordance; include video count and last-backup/pending context in the collection detail or list where it remains legible. [Visual: S7]
-  - [ ] **5.6 Add advanced backup preferences:** Make `Wi-Fi only` the first visible preference, then model while charging, include existing videos, and optional post-backup cleanup only after their platform behavior and safety rules are defined. [Visual: S1, S7]
-  - [ ] **5.7 Make background timing truthful:** Treat Expo BackgroundTask scheduling as best-effort, avoid exact promises, persist work between runs, and test interruption/restart behavior on physical iOS and Android devices.
-  - [ ] **5.8 Replace the web AutoSync notice:** Show a concise `Backup` destination with device/back-up summary only when device metadata exists; otherwise explain that automatic backup is managed on mobile without presenting a dead-end settings page. [Visual: S2, S3]
+  - [x] **5.1 Recompose `AutoSyncScreen` as `BackupScreen`:** Extract confidence summary, reclaimable-storage card, automatic-backup collections, transfer activity, and advanced settings into independent sections. [Visual: S7]
+  - [x] **5.2 Add the backup confidence summary:** Show `Everything is backed up`, last successful check, pending/failed counts, and an honest explanation when background work is delayed or unavailable. [Visual: S7]
+  - [x] **5.3 Build the reclaimable-storage calculation:** List only device assets with verified cloud copies and total their bytes so `Free up {size}` and the supporting eligible-video count are precise. [Visual: S7]
+  - [x] **5.4 Implement the multi-video free-space flow:** Present the eligible count and size, explain that cloud copies remain available, require confirmation, delete local assets in a recoverable batch workflow, record each successful removal, and report partial failures.
+    - [x] 5.4.1 Use Expo MediaLibrary’s SDK 57 asset APIs and handle platform permission/confirmation behavior explicitly.
+    - [x] 5.4.2 Never mark an item local-removed until device deletion succeeds.
+    - [x] 5.4.3 Finish with a clear `storage freed` success moment and refresh the summary.
+  - [x] **5.5 Redesign automatic-backup collection controls:** Show the device collection, enabled state, playlist attachment affordance, video count, and collection size. Device collections do not currently expose a reliable cross-platform thumbnail or per-collection backup timestamp, so those stay out until their data is authoritative. [Visual: S7]
+  - [x] **5.6 Add the safe, supported backup preference:** Make `Wi-Fi only` visible and enforce it for foreground and background automatic backup. Add while-charging, include-existing-videos, and post-backup cleanup only after their platform behavior and safety rules are defined. [Visual: S1, S7]
+  - [x] **5.7 Make background timing truthful:** Treat Expo BackgroundTask scheduling as best-effort, avoid exact promises, and persist enabled collections and playlist mappings between runs. Physical-device interruption/restart coverage remains in release QA (9.8).
+  - [x] **5.8 Replace the web AutoSync notice:** Explain concisely that automatic backup and device-local collection selection are managed on mobile. Add a cross-device summary later when device identity becomes account-scoped. [Visual: S2, S3]
   - [ ] **5.9 Test safety-critical flows:** Cover permissions, limited library access, offline behavior, interrupted uploads, partial local deletion, stale asset IDs, background-task expiry, and confirmation copy on physical devices.
 
 - **[ ] Initiative 6: Redesign the player as a calm, media-first experience**
@@ -104,16 +104,16 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [ ] **6.10 Evaluate the `Improve this video` concept:** Keep it out of the UI until its user value, capabilities, privacy implications, and implementation scope are defined; do not ship a non-functional prompt just because it appears in S5.
   - [ ] **6.11 Test player behavior:** Cover desktop/mobile layouts, details disclosure, keyboard and screen-reader navigation, unavailable media, share failure, local removal, permanent deletion confirmation, and reduced-motion behavior. [Visual: S5]
 
-- **[ ] Initiative 7: Promote Collections to first-class organization**
-  **Brief:** Help dancers and movement practitioners find recordings by the contexts they naturally remember—class, workshop, rehearsal, practice, or location—without turning Move Sync into a generic file manager. Collections are visible as a primary web destination and a thumbnail/count list on mobile. [Visual: S3, S4, S6, S7]
+- **[ ] Initiative 7: Promote Playlists to first-class organization**
+  **Brief:** Help dancers and movement practitioners organize platform videos by the contexts they naturally remember—class, workshop, rehearsal, practice, or location—without conflating that organization with device-local collections. Playlists are a primary web and mobile destination; collections remain device albums configured from mobile Backup. [Visual: S3, S4, S6, S7]
   **Tasks:**
-  - [ ] **7.1 Define collection semantics:** Decide how device albums map to cloud collections, how renames/deletions reconcile, and whether a video may belong to more than one cloud collection. [Visual: S2, S3]
-  - [ ] **7.2 Separate cloud collections from backup settings:** Keep collection browsing/organization independent from the list of device albums selected for automatic backup.
-  - [ ] **7.3 Build the Collections destination:** Show collection cover imagery, name, video count, and recent activity with responsive web/mobile layouts and useful empty states; follow the mobile thumbnail/name/count/chevron list shown in S6. [Visual: S4, S6]
-  - [ ] **7.4 Build collection detail browsing:** Reuse the Videos grid, search, filter, selection, and pagination behavior within a selected collection.
-  - [ ] **7.5 Add collection management:** Support create, rename, add/move selected videos, and safe delete/remove behavior without affecting the original device album unexpectedly.
-  - [ ] **7.6 Surface collections in discovery:** Add collection suggestions/results to search and show the collection in Details without crowding normal video cards. [Visual: S4, S5, S6]
-  - [ ] **7.7 Test collection reconciliation:** Cover duplicate names, renamed/deleted device albums, videos present in multiple iOS albums, Android album differences, and cloud-only collections.
+  - [x] **7.1 Define collection and playlist semantics:** Device collections are local album sources used for backup. Cloud playlists are user-managed platform organization; a video may belong to multiple playlists. Collection rename/deletion reconciliation preserves source identity. [Visual: S2, S3]
+  - [x] **7.2 Separate playlists from backup settings:** Playlist browsing/organization is independent from device collections selected for automatic backup; a collection may optionally route newly backed-up videos into playlists.
+  - [ ] **7.3 Complete the Playlists destination:** Extend the existing destination with cover imagery, recent activity, polished responsive layouts, and useful empty states. [Visual: S4, S6]
+  - [ ] **7.4 Build playlist detail browsing:** Reuse the Videos grid, search, filter, selection, and pagination behavior within a selected playlist.
+  - [ ] **7.5 Complete playlist management:** The basic create/rename/delete/add/remove operations exist; add consequence-aware flows and bulk assignment without affecting device collections.
+  - [ ] **7.6 Surface playlists in discovery:** Add playlist suggestions/results to search and show playlist membership in Details without crowding normal video cards. [Visual: S4, S5, S6]
+  - [ ] **7.7 Test source-collection reconciliation and playlist membership:** Cover duplicate/renamed/deleted device albums, videos present in multiple iOS albums, Android album differences, multiple playlist membership, and playlist deletion.
 
 - **[ ] Initiative 8: Add backup activity, selection, and bulk workflows**
   **Brief:** Let users understand active work and manage groups of videos without filling every card with controls. The presentation calls for a compact `uploads in progress` entry on web and a clear long-press selection bar on mobile; the final navigation decision in 1.7 determines whether Activity is a destination too. [Visual: S4, S6, S7]
@@ -121,8 +121,8 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [ ] **8.1 Build a backup activity surface:** Replace inline upload rows with the compact `uploads in progress` entry shown in S4; open a drawer/sheet or dedicated Activity destination (after 1.7) listing uploading, waiting, completed, and failed items.
   - [ ] **8.2 Add retry and recovery actions:** Allow retry per failed item and retry all, preserve useful error explanations, and remove completed activity after an appropriate confirmation period.
   - [ ] **8.3 Formalize desktop selection:** Reveal checkboxes on hover/focus, support click/keyboard selection and select-all for the loaded result set, and show a contextual action bar. [Visual: S4]
-  - [ ] **8.4 Formalize mobile selection:** Enter selection mode on long press, make subsequent taps predictable, keep navigation safe, and provide the selected-count bar with Share, Add to collection, and Delete actions shown in S6.
-  - [ ] **8.5 Implement bulk actions:** Support Share, Download where available, Add/move to collection, remove local copies when safe, and Delete with consequence-aware confirmations. [Visual: S6]
+  - [ ] **8.4 Formalize mobile selection:** Enter selection mode on long press, make subsequent taps predictable, keep navigation safe, and provide a selected-count bar with Share, Add to playlist, and Delete actions.
+  - [ ] **8.5 Implement bulk actions:** Support Share, Download where available, Add to playlist, remove local copies when safe, and Delete with consequence-aware confirmations. [Visual: S6]
   - [ ] **8.6 Add batch backend operations:** Avoid issuing fragile one-by-one mutations for large selections; return per-item outcomes so partial failures can be shown and retried.
   - [ ] **8.7 Test large and interrupted workflows:** Cover mixed storage states, selection across pagination/filter changes, offline transitions, canceled sharing, partial deletion, and background/foreground handoff.
 

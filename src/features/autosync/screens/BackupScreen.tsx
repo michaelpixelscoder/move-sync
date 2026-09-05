@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { CollectionRecord } from '../../../types/domain';
@@ -28,11 +28,23 @@ import {
 } from '../../../components/layout/PagePrimitives';
 import {
   BackupCollectionList,
+  BackupPreferences,
   BackupSummary,
   BackupSyncNotice,
   BackupWebNotice,
+  FreeStorageConfirmation,
+  ReclaimableStorageCard,
 } from '../components/BackupSections';
 import { CollectionPlaylistPicker } from '../components/CollectionPlaylistPicker';
+import {
+  readWifiOnlyPreference,
+  setWifiOnlyPreference,
+} from '../services/autoSyncPreferences';
+import {
+  freeDeviceStorage,
+  type ReclaimableVideo,
+} from '../services/freeDeviceStorage';
+import { formatBytes } from '../../../lib/format';
 
 export function BackupScreen({ clientKey }: { clientKey: string }) {
   const serverRows = useQuery(
@@ -40,13 +52,43 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
     Platform.OS === 'web' ? { clientKey } : 'skip',
   );
   const reconcile = useMutation(api.collections.reconcile);
+  const summary = useQuery(
+    api.media.summary,
+    Platform.OS === 'web' ? 'skip' : { clientKey },
+  );
+  const reclaimablePages = usePaginatedQuery(
+    api.media.listPage,
+    Platform.OS === 'web'
+      ? 'skip'
+      : { clientKey, filter: { kind: 'cloud' }, sort: 'desc' },
+    { initialNumItems: 50 },
+  );
   const [deviceRows, setDeviceRows] = useState<CollectionRecord[]>();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState<string>();
   const [error, setError] = useState<string>();
+  const [wifiOnly, setWifiOnly] = useState(true);
+  const [confirmingCleanup, setConfirmingCleanup] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string>();
   const [managingCollection, setManagingCollection] =
     useState<CollectionRecord>();
   const rows = Platform.OS === 'web' ? serverRows : deviceRows;
+  const reclaimable = reclaimablePages.results.flatMap((media) =>
+    media.storage.safeToRemoveLocal && media.localAssetId
+      ? [
+          {
+            id: media._id,
+            localAssetId: media.localAssetId,
+            sizeBytes: media.sizeBytes,
+          } satisfies ReclaimableVideo,
+        ]
+      : [],
+  );
+  const reclaimableBytes = reclaimable.reduce(
+    (total, media) => total + media.sizeBytes,
+    0,
+  );
   const refresh = async () => {
     if (Platform.OS === 'web') return;
     try {
@@ -75,8 +117,15 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
     }
   };
   useEffect(() => {
-    if (Platform.OS !== 'web') void refresh();
+    if (Platform.OS !== 'web') {
+      void refresh();
+      void readWifiOnlyPreference().then(setWifiOnly);
+    }
   }, [clientKey]);
+  useEffect(() => {
+    if (reclaimablePages.status === 'CanLoadMore')
+      reclaimablePages.loadMore(50);
+  }, [reclaimablePages.status, reclaimablePages.loadMore]);
   const toggle = async (collection: CollectionRecord, enabled: boolean) => {
     try {
       setError(undefined);
@@ -114,6 +163,32 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         : current,
     );
   };
+  const updateWifiOnly = (enabled: boolean) => {
+    setWifiOnly(enabled);
+    void setWifiOnlyPreference(enabled).catch(() => {
+      setWifiOnly(!enabled);
+      setError('Unable to save the Wi-Fi preference.');
+    });
+  };
+  const confirmCleanup = async () => {
+    setConfirmingCleanup(false);
+    setCleaning(true);
+    setCleanupResult(undefined);
+    try {
+      const result = await freeDeviceStorage(clientKey, reclaimable);
+      setCleanupResult(
+        result.failedCount
+          ? `${formatBytes(result.freedBytes)} freed. ${result.failedCount} video${result.failedCount === 1 ? '' : 's'} could not be removed.`
+          : `${formatBytes(result.freedBytes)} freed from this phone.`,
+      );
+    } catch (value) {
+      setError(
+        value instanceof Error ? value.message : 'Unable to free phone storage',
+      );
+    } finally {
+      setCleaning(false);
+    }
+  };
   if (rows === undefined)
     return <LoadingState label={productCopy.backup.loading} />;
   return (
@@ -145,6 +220,14 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
           <ContentFrame width="compact" style={styles.content}>
             <BackupSummary
               enabledCount={rows.filter((row) => row.autoSync).length}
+              summary={summary}
+            />
+            <ReclaimableStorageCard
+              count={reclaimable.length}
+              bytes={reclaimableBytes}
+              busy={cleaning || reclaimablePages.status === 'LoadingMore'}
+              result={cleanupResult}
+              onPress={() => setConfirmingCleanup(true)}
             />
             <BackupCollectionList
               rows={rows as CollectionRecord[]}
@@ -153,6 +236,10 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
               onManagePlaylists={setManagingCollection}
             />
             {syncing ? <BackupSyncNotice name={syncing} /> : null}
+            <BackupPreferences
+              wifiOnly={wifiOnly}
+              onWifiOnlyChange={updateWifiOnly}
+            />
           </ContentFrame>
         </ScrollView>
       ) : (
@@ -168,6 +255,13 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         collection={managingCollection}
         onChange={updatePlaylists}
         onClose={() => setManagingCollection(undefined)}
+      />
+      <FreeStorageConfirmation
+        visible={confirmingCleanup}
+        count={reclaimable.length}
+        bytes={reclaimableBytes}
+        onCancel={() => setConfirmingCleanup(false)}
+        onConfirm={() => void confirmCleanup()}
       />
     </View>
   );

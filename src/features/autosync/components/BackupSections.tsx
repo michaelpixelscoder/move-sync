@@ -1,4 +1,5 @@
 import {
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,6 +17,8 @@ import {
   StatusRow,
 } from '../../../components/layout/PagePrimitives';
 import { productCopy } from '../../../content/productCopy';
+import { Button } from '../../../components/ui/Button';
+import { formatBytes, formatDate } from '../../../lib/format';
 
 export function BackupWebNotice() {
   return (
@@ -38,7 +41,22 @@ export function BackupWebNotice() {
     </ContentFrame>
   );
 }
-export function BackupSummary({ enabledCount }: { enabledCount: number }) {
+export function BackupSummary({
+  enabledCount,
+  summary,
+}: {
+  enabledCount: number;
+  summary?: {
+    failedCount: number;
+    activeUploadCount: number;
+    waitingCount: number;
+    lastSuccessfulBackupAt: number | null;
+  };
+}) {
+  const outstanding =
+    (summary?.failedCount ?? 0) +
+    (summary?.activeUploadCount ?? 0) +
+    (summary?.waitingCount ?? 0);
   return (
     <View style={styles.summary}>
       <Ionicons
@@ -48,14 +66,140 @@ export function BackupSummary({ enabledCount }: { enabledCount: number }) {
       />
       <View style={styles.summaryCopy}>
         <Text style={styles.summaryTitle}>
-          {enabledCount} collection{enabledCount === 1 ? '' : 's'} backing up
+          {outstanding === 0 ? 'Everything is backed up' : 'Backup in progress'}
         </Text>
         <Text style={styles.summaryText}>
-          Enabled collections are scanned now and periodically in the
-          background.
+          {summary?.lastSuccessfulBackupAt
+            ? `Last backup ${formatDate(summary.lastSuccessfulBackupAt)}. `
+            : ''}
+          {outstanding
+            ? `${outstanding} video${outstanding === 1 ? '' : 's'} need attention or are still transferring.`
+            : `${enabledCount} collection${enabledCount === 1 ? '' : 's'} selected. Background checks run when your phone allows them.`}
         </Text>
       </View>
     </View>
+  );
+}
+
+export function ReclaimableStorageCard({
+  count,
+  bytes,
+  busy,
+  result,
+  onPress,
+}: {
+  count: number;
+  bytes: number;
+  busy: boolean;
+  result?: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.reclaimCard}>
+      <View style={styles.reclaimIcon}>
+        <Ionicons
+          name="phone-portrait-outline"
+          size={22}
+          color={theme.color.accent}
+        />
+      </View>
+      <View style={styles.reclaimCopy}>
+        <Text style={styles.reclaimTitle}>
+          {formatBytes(bytes)} ready to free
+        </Text>
+        <Text style={styles.reclaimMeta}>
+          {count
+            ? `${count} safely backed-up video${count === 1 ? '' : 's'} can be removed from this phone.`
+            : 'Backed-up videos that are still on this phone will appear here.'}
+        </Text>
+        {result ? (
+          <Text accessibilityLiveRegion="polite" style={styles.result}>
+            {result}
+          </Text>
+        ) : null}
+      </View>
+      <Button
+        label={count ? `Free up ${formatBytes(bytes)}` : 'Nothing to free'}
+        disabled={!count}
+        loading={busy}
+        onPress={onPress}
+      />
+    </View>
+  );
+}
+
+export function BackupPreferences({
+  wifiOnly,
+  onWifiOnlyChange,
+}: {
+  wifiOnly: boolean;
+  onWifiOnlyChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.preferences}>
+      <SectionHeader title="BACKUP PREFERENCES" />
+      <DetailPanel>
+        <View style={styles.preferenceRow}>
+          <View style={styles.rowCopy}>
+            <Text style={styles.rowTitle}>Wi-Fi only</Text>
+            <Text style={styles.rowMeta}>
+              Pause automatic uploads on mobile data.
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel="Back up on Wi-Fi only"
+            value={wifiOnly}
+            onValueChange={onWifiOnlyChange}
+            trackColor={{
+              false: theme.color.surfacePressed,
+              true: theme.color.accent,
+            }}
+            thumbColor={theme.color.white}
+          />
+        </View>
+      </DetailPanel>
+    </View>
+  );
+}
+
+export function FreeStorageConfirmation({
+  visible,
+  count,
+  bytes,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  count: number;
+  bytes: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <View style={styles.modalBackdrop}>
+        <View accessibilityViewIsModal style={styles.dialog}>
+          <Text style={styles.dialogTitle}>Free up {formatBytes(bytes)}?</Text>
+          <Text style={styles.dialogText}>
+            This removes {count} video{count === 1 ? '' : 's'} from this phone.
+            Their verified cloud copies stay available in Move Sync.
+          </Text>
+          <View style={styles.dialogActions}>
+            <Button label="Cancel" tone="secondary" onPress={onCancel} />
+            <Button
+              label="Remove from phone"
+              tone="danger"
+              onPress={onConfirm}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 export function BackupCollectionList({
@@ -110,7 +254,7 @@ function CollectionRow({
         <Text style={styles.rowTitle}>{item.name}</Text>
         <Text style={styles.rowMeta}>
           {item.videoCount} video{item.videoCount === 1 ? '' : 's'} ·{' '}
-          {item.assetCount} total items
+          {formatBytes(item.sizeBytes ?? 0)}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -218,5 +362,65 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     overflow: 'hidden',
     backgroundColor: theme.color.surface,
+  },
+  reclaimCard: {
+    marginTop: theme.space.md,
+    padding: theme.space.md,
+    gap: theme.space.sm,
+    alignItems: 'center',
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surface,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  reclaimIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.color.accentSubtle,
+  },
+  reclaimCopy: { flex: 1, minWidth: 190 },
+  reclaimTitle: textStyles.sectionTitle,
+  reclaimMeta: textStyles.meta,
+  result: {
+    ...textStyles.status,
+    color: theme.color.success,
+    marginTop: theme.space.xxs,
+  },
+  preferences: { gap: theme.space.xs, marginTop: theme.space.lg },
+  preferenceRow: {
+    minHeight: 68,
+    padding: theme.space.md,
+    gap: theme.space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.space.lg,
+    backgroundColor: theme.color.overlay,
+  },
+  dialog: {
+    width: '100%',
+    maxWidth: 460,
+    padding: theme.space.lg,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceElevated,
+  },
+  dialogTitle: textStyles.sectionTitle,
+  dialogText: {
+    ...textStyles.body,
+    color: theme.color.textSecondary,
+    marginTop: theme.space.sm,
+  },
+  dialogActions: {
+    marginTop: theme.space.lg,
+    gap: theme.space.sm,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
 });

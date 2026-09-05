@@ -7,8 +7,14 @@ import {
 } from './collectionPlaylistPreferences';
 import { readDeviceCollections } from './deviceCollections';
 import { syncCollection } from './syncCollection';
+import NetInfo from '@react-native-community/netinfo';
+import { readWifiOnlyPreference } from './autoSyncPreferences';
 
 export async function syncEnabledCollections(clientKey: string) {
+  if (await readWifiOnlyPreference()) {
+    const network = await NetInfo.fetch();
+    if (network.type !== 'wifi') return;
+  }
   const enabledIds = await readAutoSyncCollectionIds();
   if (!enabledIds.size) return;
 

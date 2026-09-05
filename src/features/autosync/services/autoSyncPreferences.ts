@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'move-sync.auto-sync-collections.v1';
+const WIFI_ONLY_KEY = 'move-sync.wifi-only.v1';
 
 export async function readAutoSyncCollectionIds() {
   const value = await AsyncStorage.getItem(STORAGE_KEY);
@@ -31,4 +32,12 @@ export function applyAutoSyncPreferences<
     ...collection,
     autoSync: enabledIds.has(collection.localId),
   }));
+}
+
+export async function readWifiOnlyPreference() {
+  return (await AsyncStorage.getItem(WIFI_ONLY_KEY)) !== 'false';
+}
+
+export async function setWifiOnlyPreference(enabled: boolean) {
+  await AsyncStorage.setItem(WIFI_ONLY_KEY, String(enabled));
 }
