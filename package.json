@@ -2,6 +2,11 @@
   "name": "move-sync",
   "version": "1.0.0",
   "main": "index.ts",
+  "expo": {
+    "autolinking": {
+      "searchPaths": ["./modules"]
+    }
+  },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",

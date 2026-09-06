@@ -11,7 +11,7 @@ import {
   LoadingState,
 } from '../../../components/ui/ScreenState';
 import { readDeviceCollections } from '../services/deviceCollections';
-import { syncCollection } from '../services/syncCollection';
+import { refreshForegroundSync } from '../services/foregroundSync';
 import {
   applyAutoSyncPreferences,
   readAutoSyncCollectionIds,
@@ -45,6 +45,7 @@ import {
   type ReclaimableVideo,
 } from '../services/freeDeviceStorage';
 import { formatBytes } from '../../../lib/format';
+import { toCollectionReconcileInput } from '../services/reconcileDeviceCollections';
 
 export function BackupScreen({ clientKey }: { clientKey: string }) {
   const serverRows = useQuery(
@@ -98,7 +99,10 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
       const [enabledIds, playlistMap, reconciled] = await Promise.all([
         readAutoSyncCollectionIds(),
         readCollectionPlaylistMap(),
-        reconcile({ clientKey, collections }),
+        reconcile({
+          clientKey,
+          collections: toCollectionReconcileInput(collections),
+        }),
       ]);
       setDeviceRows(
         applyCollectionPlaylistPreferences(
@@ -137,10 +141,8 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
             : row,
         ),
       );
-      if (enabled) {
-        setSyncing(collection.name);
-        await syncCollection(clientKey, collection);
-      }
+      setSyncing(collection.name);
+      await refreshForegroundSync(clientKey);
     } catch (value) {
       setError(
         value instanceof Error
@@ -165,7 +167,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   };
   const updateWifiOnly = (enabled: boolean) => {
     setWifiOnly(enabled);
-    void setWifiOnlyPreference(enabled).catch(() => {
+    void setWifiOnlyPreference(enabled).then(() => refreshForegroundSync(clientKey)).catch(() => {
       setWifiOnly(!enabled);
       setError('Unable to save the Wi-Fi preference.');
     });
@@ -254,6 +256,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         clientKey={clientKey}
         collection={managingCollection}
         onChange={updatePlaylists}
+        onPreferencesChanged={() => void refreshForegroundSync(clientKey)}
         onClose={() => setManagingCollection(undefined)}
       />
       <FreeStorageConfirmation

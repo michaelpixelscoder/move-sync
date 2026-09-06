@@ -9,6 +9,7 @@ import { readDeviceCollections } from './deviceCollections';
 import { syncCollection } from './syncCollection';
 import NetInfo from '@react-native-community/netinfo';
 import { readWifiOnlyPreference } from './autoSyncPreferences';
+import { toCollectionReconcileInput } from './reconcileDeviceCollections';
 
 export async function syncEnabledCollections(clientKey: string) {
   if (await readWifiOnlyPreference()) {
@@ -27,7 +28,7 @@ export async function syncEnabledCollections(clientKey: string) {
   );
   const collections = await convex.mutation(api.collections.reconcile, {
     clientKey,
-    collections: enabledCollections,
+    collections: toCollectionReconcileInput(enabledCollections),
   });
   for (const collection of applyCollectionPlaylistPreferences(
     collections,

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { addListener } from 'expo-media-library';
-import { syncEnabledCollections } from '../features/autosync/services/syncEnabledCollections';
+import { refreshForegroundSync } from '../features/autosync/services/foregroundSync';
 
 export function useAutoSync(clientKey: string | undefined) {
   const syncing = useRef(false);
@@ -12,7 +11,7 @@ export function useAutoSync(clientKey: string | undefined) {
       if (syncing.current) return;
       syncing.current = true;
       try {
-        await syncEnabledCollections(clientKey);
+        await refreshForegroundSync(clientKey);
       } catch (error) {
         console.warn('Unable to sync enabled collections', error);
       } finally {
@@ -27,10 +26,8 @@ export function useAutoSync(clientKey: string | undefined) {
         if (state === 'active') void sync();
       },
     );
-    const mediaLibrarySubscription = addListener(() => void sync());
     return () => {
       appStateSubscription.remove();
-      mediaLibrarySubscription.remove();
     };
   }, [clientKey]);
 }

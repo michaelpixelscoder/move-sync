@@ -11,11 +11,13 @@ export function CollectionPlaylistPicker({
   clientKey,
   collection,
   onChange,
+  onPreferencesChanged,
   onClose,
 }: {
   clientKey: string;
   collection: CollectionRecord | undefined;
   onChange: (localId: string, playlistIds: Id<'playlists'>[]) => void;
+  onPreferencesChanged?: () => void;
   onClose: () => void;
 }) {
   const visible = Boolean(collection);
@@ -30,6 +32,7 @@ export function CollectionPlaylistPicker({
       : collection.playlistIds.filter((id) => id !== playlistId);
     onChange(collection.localId, next);
     await setCollectionPlaylistIds(collection.localId, next);
+    onPreferencesChanged?.();
   };
   return (
     <BottomSheet
