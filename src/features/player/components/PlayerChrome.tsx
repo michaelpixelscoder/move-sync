@@ -8,24 +8,31 @@ export function PlayerChrome({
   onBack,
   onShare,
   onDetails,
-  detailsVisible,
+  onMore,
   onOpenNavigation,
 }: {
   title: string;
   onBack: () => void;
   onShare: () => void;
-  onDetails: () => void;
-  detailsVisible: boolean;
+  onDetails?: () => void;
+  onMore: () => void;
   onOpenNavigation?: () => void;
 }) {
   return (
     <ContentFrame width="wide" style={styles.header}>
       {onOpenNavigation ? (
-        <IconButton
-          label="Open navigation"
-          name="menu"
-          onPress={onOpenNavigation}
-        />
+        <View style={styles.leadingActions}>
+          <IconButton
+            label="Open navigation"
+            name="menu"
+            onPress={onOpenNavigation}
+          />
+          <IconButton
+            label={productCopy.player.backToVideos}
+            name="chevron-back"
+            onPress={onBack}
+          />
+        </View>
       ) : (
         <IconButton
           label={productCopy.player.backToVideos}
@@ -42,14 +49,18 @@ export function PlayerChrome({
           name="paper-plane-outline"
           onPress={onShare}
         />
+        {onDetails ? (
+          <IconButton
+            label={productCopy.player.showDetails}
+            name="information-circle-outline"
+            onPress={onDetails}
+            tone="surface"
+          />
+        ) : null}
         <IconButton
-          label={
-            detailsVisible
-              ? 'Hide video details'
-              : productCopy.player.showDetails
-          }
-          name="information-circle-outline"
-          onPress={onDetails}
+          label="More video actions"
+          name="ellipsis-horizontal"
+          onPress={onMore}
           tone="surface"
         />
       </View>
@@ -65,4 +76,5 @@ const styles = StyleSheet.create({
   },
   title: { ...textStyles.cardTitle, flex: 1, textAlign: 'center' },
   actions: { flexDirection: 'row', gap: theme.space.xxs },
+  leadingActions: { flexDirection: 'row', gap: theme.space.xxs },
 });

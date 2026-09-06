@@ -8,21 +8,14 @@ import {
   DetailPanel,
   StatusRow,
 } from '../../../components/layout/PagePrimitives';
-import { Button } from '../../../components/ui/Button';
 export function PlayerInspector({
   item,
-  busy,
-  onShare,
-  onDeleteCloud,
-  onDeleteLocal,
   compact = false,
+  heading,
 }: {
   item: MediaRecord;
-  busy: boolean;
-  onShare: () => void;
-  onDeleteCloud: () => void;
-  onDeleteLocal?: () => void;
   compact?: boolean;
+  heading?: string;
 }) {
   const rows = [
     ['folder-outline', 'Size', formatBytes(item.sizeBytes)],
@@ -31,7 +24,7 @@ export function PlayerInspector({
     ['location-outline', 'Location', item.locationName ?? 'Not recorded'],
     [
       'albums-outline',
-      'Device collection',
+      'Source collection',
       item.collectionName ?? productCopy.player.noCollection,
     ],
   ] as const;
@@ -40,7 +33,7 @@ export function PlayerInspector({
       style={[styles.scroll, compact && styles.compact]}
       contentContainerStyle={styles.content}
     >
-      <Text style={styles.title}>Details</Text>
+      {heading ? <Text style={styles.title}>{heading}</Text> : null}
       <DetailPanel>
         {rows.map(([icon, label, value]) => (
           <StatusRow
@@ -76,31 +69,25 @@ export function PlayerInspector({
           }
           tone={item.storage.cloudAvailable ? 'success' : 'default'}
         />
+        <StatusRow
+          icon={
+            <Ionicons
+              name="phone-portrait-outline"
+              size={19}
+              color={
+                item.storage.localAvailable
+                  ? theme.color.success
+                  : theme.color.textSecondary
+              }
+            />
+          }
+          label="On this device"
+          value={
+            item.storage.localAvailable ? 'Available locally' : 'Cloud only'
+          }
+          tone={item.storage.localAvailable ? 'success' : 'default'}
+        />
       </DetailPanel>
-      <View style={styles.actions}>
-        <Button
-          label={productCopy.actions.share}
-          icon="paper-plane-outline"
-          loading={busy}
-          onPress={onShare}
-        />
-        {onDeleteLocal ? (
-          <Button
-            label={productCopy.actions.freePhoneStorage}
-            icon="phone-portrait-outline"
-            tone="secondary"
-            disabled={busy}
-            onPress={onDeleteLocal}
-          />
-        ) : null}
-        <Button
-          label={productCopy.actions.removeFromCloud}
-          icon="trash-outline"
-          tone="danger"
-          disabled={busy}
-          onPress={onDeleteCloud}
-        />
-      </View>
     </ScrollView>
   );
 }
@@ -109,5 +96,4 @@ const styles = StyleSheet.create({
   compact: { width: '100%', maxHeight: 470 },
   content: { gap: theme.space.md, paddingBottom: theme.space.md },
   title: textStyles.sectionTitle,
-  actions: { gap: theme.space.sm },
 });

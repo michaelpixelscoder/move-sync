@@ -25,6 +25,12 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "expo-video",
+        {
+          "supportsPictureInPicture": true
+        }
+      ],
       "expo-background-task",
       [
         "expo-media-library",

@@ -92,16 +92,16 @@ The roadmap remains structural first: information architecture, shared shell, de
 - **[ ] Initiative 6: Redesign the player as a calm, media-first experience**
   **Brief:** Make video playback the visual hero while keeping a calm right-hand inspector, one Share action, and consequence-aware secondary actions. The desired desktop composition is shown in S5.
   **Tasks:**
-  - [ ] **6.1 Split `PlayerScreen` into focused parts:** Extract a player header, video stage, metadata summary, desktop inspector, mobile details sheet, overflow menu, and destructive confirmation dialog. [Visual: S5]
-  - [ ] **6.2 Rebuild the desktop layout:** Give the video stage most of the viewport, retain the quiet right-side inspector shown in S5 when space permits, and remove the bordered metadata footer under the video.
-  - [ ] **6.3 Rebuild the mobile layout:** Keep a compact top bar, allow the video to lead, and present details/actions in an accessible bottom sheet.
-  - [ ] **6.4 Remove duplicate information and actions:** Keep one title placement per breakpoint, one Share action, native duration in the player controls, and only file-oriented metadata in Details.
-  - [ ] **6.5 Create a semantic storage section:** Present independent `Backed up to cloud` and `On this device` rows, with concise recency/offline context; show `Cloud only` when appropriate rather than one raw sync-state row. [Visual: S5]
-  - [ ] **6.6 Consolidate secondary actions:** Put Share in the header and Download, Add/move to collection, View details, Remove local copy, and Delete in an overflow menu with platform-appropriate availability.
-  - [ ] **6.7 Make destructive actions safe:** Determine whether another copy exists, label the action accordingly, show the consequence and video title in a confirmation dialog, and distinguish `Remove from cloud` from `Delete video permanently`.
-  - [ ] **6.8 Decide native versus custom playback controls:** The S5 concept shows play, ±10 seconds, audio, captions, settings, picture-in-picture, and full-screen; implement only the controls supported across target platforms, with accessible labels and a native fallback where needed.
-  - [ ] **6.9 Improve playback states:** Add a poster/loading treatment until the first frame renders, unavailable/offline/retry states, full-screen and picture-in-picture behavior where configured, and captions/subtitle support when metadata exists.
-  - [ ] **6.10 Evaluate the `Improve this video` concept:** Keep it out of the UI until its user value, capabilities, privacy implications, and implementation scope are defined; do not ship a non-functional prompt just because it appears in S5.
+  - [x] **6.1 Split `PlayerScreen` into focused parts:** Extract a player header, video stage, desktop inspector, mobile details sheet, overflow menu, playlist chooser, and destructive confirmation dialog. [Visual: S5]
+  - [x] **6.2 Rebuild the desktop layout:** Give the video stage most of the viewport, retain a quiet right-side inspector when space permits, and remove the bordered metadata footer under the video.
+  - [x] **6.3 Rebuild the mobile layout:** Keep a compact top bar, allow the video to lead, and present details in an accessible bottom sheet; secondary actions live in a separate accessible menu.
+  - [x] **6.4 Remove duplicate information and actions:** Keep one title placement per breakpoint, one Share action in the header, native duration in the player controls, and file-oriented metadata in Details.
+  - [x] **6.5 Create a semantic storage section:** Present independent `Backed up to cloud` and `On this device` rows; show `Cloud only` when appropriate rather than one raw sync-state row. [Visual: S5]
+  - [x] **6.6 Consolidate secondary actions:** Keep Share in the header; make Add to playlist, Remove from this phone, and cloud deletion available through an overflow menu only when supported.
+  - [x] **6.7 Make destructive actions safe:** Determine whether a local copy exists, label the action accordingly, show the consequence and video title in a confirmation dialog, and distinguish `Remove from cloud` from `Delete video permanently`.
+  - [x] **6.8 Decide native versus custom playback controls:** Use Expo Video's native controls for the portable playback surface, with configured full-screen and picture-in-picture support. Custom ±10 seconds, captions, audio-track, and settings controls remain out until their cross-platform behavior is defined.
+  - [ ] **6.9 Improve playback states:** Loading, unavailable, full-screen, and picture-in-picture states are implemented. Add a poster/first-frame treatment, offline recovery, and captions/subtitle support when metadata exists.
+  - [x] **6.10 Evaluate the `Improve this video` concept:** Keep it out of the UI until its user value, capabilities, privacy implications, and implementation scope are defined; do not ship a non-functional prompt just because it appears in S5.
   - [ ] **6.11 Test player behavior:** Cover desktop/mobile layouts, details disclosure, keyboard and screen-reader navigation, unavailable media, share failure, local removal, permanent deletion confirmation, and reduced-motion behavior. [Visual: S5]
 
 - **[ ] Initiative 7: Promote Playlists to first-class organization**

@@ -1,17 +1,13 @@
 import { useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useEvent } from 'expo';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { MediaRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
-import {
-  formatBytes,
-  formatDate,
-  formatDuration,
-  titleFromFilename,
-} from '../../../lib/format';
+import { titleFromFilename } from '../../../lib/format';
 import { ErrorState, LoadingState } from '../../../components/ui/ScreenState';
 import { shareMedia } from '../../media/services/share';
 import { removeLocalCopy } from '../services/removeLocalCopy';
@@ -21,6 +17,11 @@ import { ContentFrame } from '../../../components/layout/PagePrimitives';
 import { PlayerChrome } from '../components/PlayerChrome';
 import { PlayerInspector } from '../components/PlayerInspector';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import {
+  PlayerActionMenu,
+  PlayerDestructiveConfirmation,
+} from '../components/PlayerActionMenu';
+import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
 
 export function PlayerScreen({
   clientKey,
@@ -38,9 +39,15 @@ export function PlayerScreen({
   const markLocalRemoved = useMutation(api.media.markLocalRemoved);
   const { isDesktop } = useResponsive();
   const [details, setDetails] = useState(false);
+  const [actionsVisible, setActionsVisible] = useState(false);
+  const [confirmCloudRemoval, setConfirmCloudRemoval] = useState(false);
+  const [playlistPickerVisible, setPlaylistPickerVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const player = useVideoPlayer(item?.videoUrl ?? null);
+  const player = useVideoPlayer(item?.videoUrl ?? null, (instance) => {
+    instance.timeUpdateEventInterval = 0.5;
+  });
+  const playback = useEvent(player, 'statusChange', { status: player.status });
   if (item === undefined) return <LoadingState label="Opening video…" />;
   const media = item as MediaRecord;
   if (!media.videoUrl)
@@ -53,6 +60,7 @@ export function PlayerScreen({
   const deleteCloudCopy = async () => {
     try {
       setBusy(true);
+      setConfirmCloudRemoval(false);
       await remove({ clientKey, id: media._id });
       onBack();
     } catch (value) {
@@ -67,6 +75,7 @@ export function PlayerScreen({
     if (!media.localAssetId || media.localAssetId.startsWith('picked:')) return;
     try {
       setBusy(true);
+      setActionsVisible(false);
       await removeLocalCopy(media.localAssetId);
       await markLocalRemoved({ clientKey, id: media._id });
     } catch (value) {
@@ -101,52 +110,48 @@ export function PlayerScreen({
     )
       ? deleteLocalCopy
       : undefined;
+  const cloudActionLabel = media.storage.localAvailable
+    ? productCopy.actions.removeFromCloud
+    : productCopy.actions.deleteVideoPermanently;
+  const playbackError =
+    playback.status === 'error' ? playback.error?.message : undefined;
   return (
     <View style={styles.screen}>
       <PlayerChrome
         title={titleFromFilename(media.filename)}
         onBack={onBack}
         onShare={share}
-        onDetails={() => setDetails((value) => !value)}
-        detailsVisible={details}
+        onDetails={isDesktop ? undefined : () => setDetails(true)}
+        onMore={() => setActionsVisible(true)}
         onOpenNavigation={isDesktop ? onOpenNavigation : undefined}
       />
-      {error ? (
+      {error || playbackError ? (
         <View style={styles.inlineError}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{error ?? playbackError}</Text>
         </View>
       ) : null}
       <ContentFrame
         width="wide"
-        style={[styles.layout, isDesktop && details && styles.layoutDesktop]}
+        style={[styles.layout, isDesktop && styles.layoutDesktop]}
       >
         <View style={styles.videoPanel}>
+          {playback.status === 'loading' ? (
+            <View accessibilityLiveRegion="polite" style={styles.loading}>
+              <Text style={styles.loadingText}>Loading video…</Text>
+            </View>
+          ) : null}
           <VideoView
             testID="video-player"
             player={player}
             style={styles.video}
             contentFit="contain"
             nativeControls
+            fullscreenOptions={{ enable: true }}
+            allowsPictureInPicture
+            startsPictureInPictureAutomatically={false}
           />
-          <View style={styles.caption}>
-            <Text style={styles.title}>
-              {titleFromFilename(media.filename)}
-            </Text>
-            <Text style={styles.captionMeta}>
-              {media.mimeType} · {formatBytes(media.sizeBytes)} ·{' '}
-              {formatDuration(media.durationMs)}
-            </Text>
-          </View>
         </View>
-        {isDesktop && details ? (
-          <PlayerInspector
-            item={media}
-            busy={busy}
-            onShare={share}
-            onDeleteCloud={deleteCloudCopy}
-            onDeleteLocal={localAction}
-          />
-        ) : null}
+        {isDesktop ? <PlayerInspector item={media} heading="Details" /> : null}
       </ContentFrame>
       <BottomSheet
         visible={details && !isDesktop}
@@ -154,15 +159,38 @@ export function PlayerScreen({
         label="Close details"
       >
         <Text style={styles.sheetTitle}>{productCopy.player.detailsTitle}</Text>
-        <PlayerInspector
-          compact
-          item={media}
-          busy={busy}
-          onShare={share}
-          onDeleteCloud={deleteCloudCopy}
-          onDeleteLocal={localAction}
-        />
+        <PlayerInspector compact item={media} />
       </BottomSheet>
+      <PlayerActionMenu
+        visible={actionsVisible}
+        busy={busy}
+        canRemoveLocal={Boolean(localAction)}
+        cloudActionLabel={cloudActionLabel}
+        onClose={() => setActionsVisible(false)}
+        onAddToPlaylist={() => {
+          setActionsVisible(false);
+          setPlaylistPickerVisible(true);
+        }}
+        onRemoveLocal={() => void localAction?.()}
+        onDeleteCloud={() => {
+          setActionsVisible(false);
+          setConfirmCloudRemoval(true);
+        }}
+      />
+      <PlayerDestructiveConfirmation
+        visible={confirmCloudRemoval}
+        filename={titleFromFilename(media.filename)}
+        removeOnlyCloud={media.storage.localAvailable}
+        busy={busy}
+        onCancel={() => setConfirmCloudRemoval(false)}
+        onConfirm={() => void deleteCloudCopy()}
+      />
+      <PlaylistPicker
+        clientKey={clientKey}
+        mediaIds={[media._id]}
+        visible={playlistPickerVisible}
+        onClose={() => setPlaylistPickerVisible(false)}
+      />
     </View>
   );
 }
@@ -182,15 +210,16 @@ const styles = StyleSheet.create({
     minHeight: 360,
     overflow: 'hidden',
     backgroundColor: theme.color.mediaCanvas,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.lg,
   },
   video: { width: '100%', flex: 1, minHeight: 300 },
-  caption: {
-    paddingHorizontal: theme.space.lg,
-    paddingVertical: theme.space.md,
-    backgroundColor: theme.color.surface,
+  loading: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.color.mediaCanvas,
   },
-  title: textStyles.sectionTitle,
-  captionMeta: { ...textStyles.meta, marginTop: theme.space.xs },
+  loadingText: textStyles.meta,
   sheetTitle: { ...textStyles.sectionTitle, marginBottom: theme.space.sm },
 });
