@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, textStyles } from '../../theme/tokens';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 type Props = {
   label: string;
   icon?: ComponentProps<typeof Ionicons>['name'];
@@ -22,6 +23,7 @@ export function Button({
   testID,
   accessibilityLabel,
 }: Props) {
+  const reducedMotion = useReducedMotion();
   const unavailable = disabled || loading;
   const foreground =
     tone === 'ghost' ? theme.color.textPrimary : theme.color.white;
@@ -38,6 +40,7 @@ export function Button({
         styles[tone],
         unavailable && styles.disabled,
         (pressed || hovered) && !unavailable && styles.interaction,
+        (pressed || hovered) && !unavailable && !reducedMotion && styles.motion,
         focused && styles.focused,
       ]}
     >
@@ -66,6 +69,7 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: theme.color.danger },
   label: textStyles.body,
   disabled: { opacity: 0.45 },
-  interaction: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  interaction: { opacity: 0.82 },
+  motion: { transform: [{ scale: 0.99 }] },
   focused: { borderWidth: 2, borderColor: theme.color.focus },
 });

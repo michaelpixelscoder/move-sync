@@ -1,3 +1,19 @@
+# Move Sync design QA
+
+## Product visual principles
+
+- Make the video or playlist cover the visual hero; use surfaces and spacing, not heavy borders, to group supporting information.
+- Reserve electric blue for primary actions and active navigation. Use green, amber, and red only for status.
+- Keep each title and primary action in one place per breakpoint. Destructive actions require a consequence-aware confirmation.
+- Every interactive surface must be at least 44×44 points, expose an accessible label/state, and retain a visible keyboard focus treatment.
+- Respect the system reduced-motion preference: interaction feedback may fade, but it must not rely on scale or movement.
+
+## Verification matrix
+
+Before release, verify Videos, Backup, Playlists, the player, activity, empty/error states, and destructive confirmations at desktop, tablet, and phone widths. Test physical iOS/Android permissions, background work, playback, sharing, local deletion, offline recovery, and accessibility settings.
+
+## Card fidelity note
+
 **Comparison target**
 
 - Source visual truth: `/home/michael/t3code/data/userdata/attachments/1fd2d6dd-19a1-454f-932d-145b84bb5a44-cd72e484-5b7f-4065-b0ce-a280e8c34bda.png`

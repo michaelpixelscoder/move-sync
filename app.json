@@ -4,7 +4,12 @@
     "slug": "move-sync",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/move-sync-icon-v2.png",
+    "splash": {
+      "image": "./assets/move-sync-splash-v2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0F17"
+    },
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
@@ -14,14 +19,14 @@
       "package": "app.movesync.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#050B12",
-        "foregroundImage": "./assets/android-icon-foreground.png",
+        "foregroundImage": "./assets/move-sync-android-foreground-v2.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/move-sync-icon-v2.png"
     },
     "plugins": [
       "expo-font",

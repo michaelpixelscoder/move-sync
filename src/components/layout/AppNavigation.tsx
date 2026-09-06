@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
@@ -85,13 +85,11 @@ export function AppNavigation({
     <View style={styles.sidebar}>
       <View>
         <View style={styles.logo}>
-          <View style={styles.logoMark}>
-            <Ionicons
-              name="cloud-outline"
-              size={19}
-              color={theme.color.accent}
-            />
-          </View>
+          <Image
+            accessibilityLabel="Move Sync mark"
+            source={require('../../../assets/move-sync-icon-v2.png')}
+            style={styles.logoMark}
+          />
           <Text style={styles.logoText}>{productCopy.appName}</Text>
         </View>
         <View style={styles.nav}>{desktopItems}</View>
@@ -218,8 +216,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: theme.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: theme.color.accentSubtle,
   },
   logoText: { ...textStyles.cardTitle },

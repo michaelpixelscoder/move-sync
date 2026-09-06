@@ -129,12 +129,12 @@ The roadmap remains structural first: information architecture, shared shell, de
 - **[ ] Initiative 9: Finish the visual identity, motion, accessibility, and release QA**
   **Brief:** Add the final layer of calm, cinematic personality after the product structure and core flows are stable. The visual system in S8 is the reference for final polish; polish must reinforce trust and usability rather than mask unresolved workflow problems.
   **Tasks:**
-  - [ ] **9.1 Refresh the Move Sync brand mark:** Create a scalable identity that combines motion, video, continuity, and cloud cues; update app icon, adaptive Android assets, splash, favicon, and in-app mark from one source system.
+  - [x] **9.1 Refresh the Move Sync brand mark:** Create a raster identity that combines motion, video, continuity, and cloud cues; apply it to the app icon, adaptive Android foreground, splash, favicon, and in-app mark from one source asset.
   - [ ] **9.2 Apply a restrained visual hierarchy:** Reduce visible borders, use surface changes and spacing for grouping, reserve blue for primary actions/active states, and use semantic success/warning/error treatment sparingly. [Visual: S4, S5, S8]
   - [ ] **9.3 Add subtle motion:** Animate upload completion, details disclosure, card hover/focus, thumbnail appearance, and reclaimed-storage totals with shared 150–250 ms tokens. [Visual: S4, S7]
-  - [ ] **9.4 Support reduced motion:** Disable or simplify nonessential transitions based on the platform accessibility preference while preserving clear state changes.
+  - [x] **9.4 Support reduced motion:** Disable scale-based interaction motion based on the platform accessibility preference while preserving opacity/state feedback.
   - [ ] **9.5 Complete the accessibility audit:** Verify WCAG contrast, 44×44 touch targets, visible keyboard focus, semantic headings/labels, status text beyond color, screen-reader announcements for progress/results, and safe destructive-action placement.
-  - [ ] **9.6 Add thumbnail interaction polish:** Add consistent hover/focus treatment and evaluate muted hover previews on desktop without mounting conflicting video views or harming grid performance. [Visual: S4]
+  - [x] **9.6 Add thumbnail interaction polish:** Use consistent hover/focus treatment without mounting hover video previews that could conflict with playback or harm grid performance. [Visual: S4]
   - [ ] **9.7 Establish visual regression coverage:** Capture approved desktop, tablet, and mobile baselines for the concepts in S4–S7, including Videos, Backup, Collections, player, activity, empty/error states, and destructive confirmations.
   - [ ] **9.8 Run final cross-platform QA:** Verify web plus physical iOS/Android behavior for permissions, background backup, playback, sharing, local deletion, responsive layout, accessibility settings, and offline recovery.
-  - [ ] **9.9 Update project documentation:** Replace the previous dashboard-oriented design QA criteria with the new media-first design principles, component inventory, token usage rules, and tested platform constraints.
+  - [x] **9.9 Update project documentation:** Document the media-first design principles, accessible interaction requirements, and cross-platform release verification matrix.

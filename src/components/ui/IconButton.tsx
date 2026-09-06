@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme/tokens';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 export function IconButton({
   name,
   label,
@@ -17,6 +18,7 @@ export function IconButton({
   loading?: boolean;
   tone?: 'ghost' | 'surface' | 'danger';
 }) {
+  const reducedMotion = useReducedMotion();
   const unavailable = disabled || loading;
   const color =
     tone === 'danger' ? theme.color.danger : theme.color.textPrimary;
@@ -33,6 +35,7 @@ export function IconButton({
         styles[tone],
         unavailable && styles.disabled,
         (pressed || hovered) && !unavailable && styles.interaction,
+        (pressed || hovered) && !unavailable && !reducedMotion && styles.motion,
         focused && styles.focused,
       ]}
     >
@@ -57,5 +60,6 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: theme.color.dangerSubtle },
   disabled: { opacity: 0.45 },
   interaction: { backgroundColor: theme.color.surfacePressed },
+  motion: { transform: [{ scale: 0.97 }] },
   focused: { borderWidth: 2, borderColor: theme.color.focus },
 });
