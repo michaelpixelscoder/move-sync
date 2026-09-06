@@ -15,6 +15,7 @@ import {
 } from '../../../components/layout/PagePrimitives';
 import { MediaCard } from '../../media/components/MediaCard';
 import { theme, textStyles } from '../../../theme/tokens';
+import { PlaylistManagementSheet } from '../components/PlaylistManagementSheet';
 
 type Props = {
   clientKey: string;
@@ -57,6 +58,11 @@ function PlaylistIndex({
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string>();
+  const [managing, setManaging] = useState<{
+    _id: Id<'playlists'>;
+    name: string;
+    videoCount: number;
+  }>();
   const submit = async () => {
     if (!name.trim()) return;
     try {
@@ -119,8 +125,13 @@ function PlaylistIndex({
                     </Text>
                   </View>
                   <Button
-                    label="Open"
+                    label="Manage"
                     tone="ghost"
+                    onPress={() => setManaging(row)}
+                  />
+                  <Button
+                    label="Open"
+                    tone="secondary"
                     onPress={() => onOpenPlaylist(row._id)}
                   />
                 </View>
@@ -134,6 +145,12 @@ function PlaylistIndex({
           message="Create a playlist to organize cloud videos across devices."
         />
       )}
+      <PlaylistManagementSheet
+        clientKey={clientKey}
+        playlist={managing}
+        onClose={() => setManaging(undefined)}
+        onDeleted={() => setManaging(undefined)}
+      />
     </View>
   );
 }
@@ -155,6 +172,8 @@ function PlaylistDetail({
     playlistId,
   });
   const touch = useMutation(api.playlists.touch);
+  const removeMedia = useMutation(api.playlists.removeMedia);
+  const [removing, setRemoving] = useState<Id<'media'>>();
   useEffect(() => {
     if (playlist) void touch({ clientKey, id: playlistId });
   }, [clientKey, playlist, playlistId, touch]);
@@ -178,6 +197,19 @@ function PlaylistDetail({
                   clientKey={clientKey}
                   mediaId={id}
                   onOpen={onOpen}
+                  removing={removing === id}
+                  onRemove={async () => {
+                    setRemoving(id);
+                    try {
+                      await removeMedia({
+                        clientKey,
+                        playlistId,
+                        mediaIds: [id],
+                      });
+                    } finally {
+                      setRemoving(undefined);
+                    }
+                  }}
                 />
               ))}
             </ResponsiveGrid>
@@ -196,19 +228,32 @@ function PlaylistVideo({
   clientKey,
   mediaId,
   onOpen,
+  removing,
+  onRemove,
 }: {
   clientKey: string;
   mediaId: Id<'media'>;
   onOpen: (id: Id<'media'>) => void;
+  removing: boolean;
+  onRemove: () => void;
 }) {
   const item = useQuery(api.media.getById, { clientKey, id: mediaId });
   return item ? (
-    <MediaCard
-      item={item as MediaRecord}
-      selected={false}
-      onPress={() => onOpen(mediaId)}
-      onLongPress={() => undefined}
-    />
+    <View style={styles.playlistCard}>
+      <MediaCard
+        item={item as MediaRecord}
+        selected={false}
+        onPress={() => onOpen(mediaId)}
+        onLongPress={() => undefined}
+      />
+      <Button
+        label="Remove from playlist"
+        tone="ghost"
+        disabled={removing}
+        loading={removing}
+        onPress={onRemove}
+      />
+    </View>
   ) : null;
 }
 
@@ -243,4 +288,5 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1 },
   name: textStyles.cardTitle,
   meta: textStyles.meta,
+  playlistCard: { gap: theme.space.xs },
 });

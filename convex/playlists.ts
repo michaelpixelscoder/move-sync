@@ -169,3 +169,74 @@ export const touch = mutation({
     return null;
   },
 });
+
+export const rename = mutation({
+  args: { clientKey: v.string(), id: v.id('playlists'), name: v.string() },
+  returns: playlistValidator,
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    assertNonEmpty(args.name, 'playlist name');
+    const name = args.name.trim();
+    if (name.length > 120)
+      throw new ConvexError('playlist name must be 120 characters or fewer');
+    const playlist = await ownedPlaylist(ctx, args.clientKey, args.id);
+    await ctx.db.patch(playlist._id, { name, lastAccessedAt: Date.now() });
+    return await playlistView(ctx, {
+      ...playlist,
+      name,
+      lastAccessedAt: Date.now(),
+    });
+  },
+});
+
+export const removeMedia = mutation({
+  args: {
+    clientKey: v.string(),
+    playlistId: v.id('playlists'),
+    mediaIds: v.array(v.id('media')),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    await ownedPlaylist(ctx, args.clientKey, args.playlistId);
+    if (
+      args.mediaIds.length < 1 ||
+      args.mediaIds.length > MAX_MEMBERSHIP_MUTATION
+    )
+      throw new ConvexError('Select between 1 and 100 videos');
+    let removed = 0;
+    for (const mediaId of new Set(args.mediaIds)) {
+      const membership = await ctx.db
+        .query('playlistMedia')
+        .withIndex('by_playlist_and_media', (q) =>
+          q.eq('playlistId', args.playlistId).eq('mediaId', mediaId),
+        )
+        .unique();
+      if (membership && membership.clientKey === args.clientKey) {
+        await ctx.db.delete(membership._id);
+        removed += 1;
+      }
+    }
+    if (removed)
+      await ctx.db.patch(args.playlistId, { lastAccessedAt: Date.now() });
+    return removed;
+  },
+});
+
+export const remove = mutation({
+  args: { clientKey: v.string(), id: v.id('playlists') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const playlist = await ownedPlaylist(ctx, args.clientKey, args.id);
+    const memberships = await ctx.db
+      .query('playlistMedia')
+      .withIndex('by_playlist', (q) => q.eq('playlistId', playlist._id))
+      .take(MAX_PLAYLIST_MEDIA + 1);
+    if (memberships.length > MAX_PLAYLIST_MEDIA)
+      throw new ConvexError('Playlist is too large to delete in one operation');
+    for (const membership of memberships) await ctx.db.delete(membership._id);
+    await ctx.db.delete(playlist._id);
+    return null;
+  },
+});

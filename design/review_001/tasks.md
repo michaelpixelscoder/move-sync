@@ -111,7 +111,7 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **7.2 Separate playlists from backup settings:** Playlist browsing/organization is independent from device collections selected for automatic backup; a collection may optionally route newly backed-up videos into playlists.
   - [ ] **7.3 Complete the Playlists destination:** Extend the existing destination with cover imagery, recent activity, polished responsive layouts, and useful empty states. [Visual: S4, S6]
   - [ ] **7.4 Build playlist detail browsing:** Reuse the Videos grid, search, filter, selection, and pagination behavior within a selected playlist.
-  - [ ] **7.5 Complete playlist management:** The basic create/rename/delete/add/remove operations exist; add consequence-aware flows and bulk assignment without affecting device collections.
+  - [x] **7.5 Complete playlist management:** Support create, rename, add/remove videos, and consequence-aware deletion without affecting videos or device collections. Bulk assignment is available from library selection.
   - [ ] **7.6 Surface playlists in discovery:** Add playlist suggestions/results to search and show playlist membership in Details without crowding normal video cards. [Visual: S4, S5, S6]
   - [ ] **7.7 Test source-collection reconciliation and playlist membership:** Cover duplicate/renamed/deleted device albums, videos present in multiple iOS albums, Android album differences, multiple playlist membership, and playlist deletion.
 
