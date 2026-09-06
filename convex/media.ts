@@ -349,7 +349,8 @@ function validateMetadata(args: {
 async function setActivity(
   ctx: MutationCtx,
   media:
-    Doc<'media'> | { _id: Id<'media'>; clientKey: string; filename: string },
+    | Doc<'media'>
+    | { _id: Id<'media'>; clientKey: string; filename: string },
   values: {
     state: 'waiting' | 'uploading' | 'completed' | 'failed';
     progress: number;
@@ -1007,6 +1008,45 @@ export const retryUpload = mutation({
     return null;
   },
 });
+export const retryFailed = mutation({
+  args: { clientKey: v.string(), limit: v.optional(v.number()) },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const limit = args.limit ?? 100;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      throw new ConvexError('limit must be between 1 and 100');
+    const failed = await ctx.db
+      .query('media')
+      .withIndex('by_client_key_and_transfer_state', (q) =>
+        q.eq('clientKey', args.clientKey).eq('transferState', 'error'),
+      )
+      .take(limit);
+    const now = Date.now();
+    for (const media of failed) {
+      const next = {
+        ...media,
+        state: 'queued' as const,
+        transferState: 'queued' as const,
+        syncError: undefined,
+        updatedAt: now,
+      };
+      await ctx.db.patch(media._id, {
+        state: 'queued',
+        transferState: 'queued',
+        syncError: undefined,
+        updatedAt: now,
+      });
+      await updateSummary(ctx, args.clientKey, media, next);
+      await setActivity(ctx, media, {
+        state: 'waiting',
+        progress: 0,
+        incrementAttempt: true,
+      });
+    }
+    return failed.length;
+  },
+});
 export const rebuildSummaryPage = mutation({
   args: {
     clientKey: v.string(),
@@ -1073,5 +1113,36 @@ export const remove = mutation({
     await ctx.db.delete(media._id);
     await updateSummary(ctx, args.clientKey, media);
     return null;
+  },
+});
+
+export const removeMany = mutation({
+  args: { clientKey: v.string(), ids: v.array(v.id('media')) },
+  returns: v.array(
+    v.object({
+      id: v.id('media'),
+      removed: v.boolean(),
+      error: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    if (args.ids.length < 1 || args.ids.length > 100)
+      throw new ConvexError('Select between 1 and 100 videos');
+    const outcomes = [];
+    for (const id of new Set(args.ids)) {
+      const media = await ctx.db.get(id);
+      if (!media || media.clientKey !== args.clientKey) {
+        outcomes.push({ id, removed: false, error: 'Video not found' });
+        continue;
+      }
+      if (media.storageId) await ctx.storage.delete(media.storageId);
+      if (media.thumbnailStorageId)
+        await ctx.storage.delete(media.thumbnailStorageId);
+      await ctx.db.delete(media._id);
+      await updateSummary(ctx, args.clientKey, media);
+      outcomes.push({ id, removed: true, error: null });
+    }
+    return outcomes;
   },
 });

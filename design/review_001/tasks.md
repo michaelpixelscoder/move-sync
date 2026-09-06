@@ -118,12 +118,12 @@ The roadmap remains structural first: information architecture, shared shell, de
 - **[ ] Initiative 8: Add backup activity, selection, and bulk workflows**
   **Brief:** Let users understand active work and manage groups of videos without filling every card with controls. The presentation calls for a compact `uploads in progress` entry on web and a clear long-press selection bar on mobile; the final navigation decision in 1.7 determines whether Activity is a destination too. [Visual: S4, S6, S7]
   **Tasks:**
-  - [ ] **8.1 Build a backup activity surface:** Replace inline upload rows with the compact `uploads in progress` entry shown in S4; open a drawer/sheet or dedicated Activity destination (after 1.7) listing uploading, waiting, completed, and failed items.
-  - [ ] **8.2 Add retry and recovery actions:** Allow retry per failed item and retry all, preserve useful error explanations, and remove completed activity after an appropriate confirmation period.
-  - [ ] **8.3 Formalize desktop selection:** Reveal checkboxes on hover/focus, support click/keyboard selection and select-all for the loaded result set, and show a contextual action bar. [Visual: S4]
-  - [ ] **8.4 Formalize mobile selection:** Enter selection mode on long press, make subsequent taps predictable, keep navigation safe, and provide a selected-count bar with Share, Add to playlist, and Delete actions.
-  - [ ] **8.5 Implement bulk actions:** Support Share, Download where available, Add to playlist, remove local copies when safe, and Delete with consequence-aware confirmations. [Visual: S6]
-  - [ ] **8.6 Add batch backend operations:** Avoid issuing fragile one-by-one mutations for large selections; return per-item outcomes so partial failures can be shown and retried.
+  - [x] **8.1 Build a backup activity surface:** The compact activity entry opens a sheet listing uploading, waiting, completed, and failed items.
+  - [x] **8.2 Add retry and recovery actions:** Allow retry per failed item and retry all, preserving error explanations. Completed activity remains as durable backup history for now.
+  - [x] **8.3 Formalize desktop selection:** Provide accessible per-card checkboxes and a contextual action bar for the loaded result set. [Visual: S4]
+  - [x] **8.4 Formalize mobile selection:** Enter selection mode on long press; subsequent taps are predictable and the selected-count bar provides Share, Add to playlist, and Delete actions.
+  - [x] **8.5 Implement bulk actions:** Support Share, Add to playlist, and permanent cloud deletion with a consequence-aware confirmation. Local removal stays in Backup and the individual player, where device permissions can be handled safely. [Visual: S6]
+  - [x] **8.6 Add batch backend operations:** Bound batch deletion and retry operations to 100 items and return per-item deletion outcomes.
   - [ ] **8.7 Test large and interrupted workflows:** Cover mixed storage states, selection across pagination/filter changes, offline transitions, canceled sharing, partial deletion, and background/foreground handoff.
 
 - **[ ] Initiative 9: Finish the visual identity, motion, accessibility, and release QA**

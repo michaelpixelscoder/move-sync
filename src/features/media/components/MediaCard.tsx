@@ -29,6 +29,8 @@ type Props = {
   onPress: () => void;
   onLongPress: () => void;
   onAddToPlaylist?: () => void;
+  onSelect?: () => void;
+  selectEnabled?: boolean;
   /** Computed by the responsive grid, never inferred from percentage widths. */ width?: number;
   /** Progress is durable backup-activity data, not an optimistic card-only value. */ progress?: number;
   desktop?: boolean;
@@ -40,6 +42,8 @@ export function MediaCard({
   onPress,
   onLongPress,
   onAddToPlaylist,
+  onSelect,
+  selectEnabled,
   width,
   progress,
   desktop: _desktop,
@@ -79,7 +83,19 @@ export function MediaCard({
           <MediaStatus item={item} progress={progress} />
         </View>
       </Pressable>
-      {selected ? <SelectionAffordance /> : null}
+      {selectEnabled && onSelect ? (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityLabel={`Select ${title}`}
+          accessibilityState={{ checked: selected }}
+          onPress={onSelect}
+          style={styles.selectionButton}
+        >
+          <SelectionAffordance selected={selected} />
+        </Pressable>
+      ) : selected ? (
+        <SelectionAffordance selected />
+      ) : null}
       {onAddToPlaylist ? (
         <View style={styles.menu}>
           <IconButton
@@ -220,10 +236,15 @@ export function MediaStatus({
     </View>
   );
 }
-function SelectionAffordance() {
+function SelectionAffordance({ selected = true }: { selected?: boolean }) {
   return (
-    <View accessibilityLabel="Selected" style={styles.check}>
-      <Ionicons name="checkmark" color={theme.color.white} size={16} />
+    <View
+      accessibilityLabel={selected ? 'Selected' : 'Not selected'}
+      style={[styles.check, !selected && styles.checkEmpty]}
+    >
+      {selected ? (
+        <Ionicons name="checkmark" color={theme.color.white} size={16} />
+      ) : null}
     </View>
   );
 }
@@ -270,16 +291,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.mediaOverlay,
   },
   check: {
-    position: 'absolute',
-    zIndex: 2,
-    right: theme.space.xs,
-    top: theme.space.xs,
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: theme.color.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkEmpty: {
+    borderWidth: 2,
+    borderColor: theme.color.white,
+    backgroundColor: theme.color.mediaOverlay,
+  },
+  selectionButton: {
+    position: 'absolute',
+    zIndex: 3,
+    right: theme.space.xs,
+    top: theme.space.xs,
   },
   menu: { position: 'absolute', right: theme.space.xs, bottom: 20 },
   body: {
