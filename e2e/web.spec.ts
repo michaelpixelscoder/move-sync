@@ -23,12 +23,9 @@ test.describe('Move Sync web', () => {
     await expect(cards.first()).toBeVisible();
     await cards.first().click();
     await expect(page.locator('video').first()).toBeVisible();
-    await page.getByLabel('Show video details').click();
     await expect(page.getByText('Details')).toBeVisible();
     await expect(page.getByText('Backed up', { exact: true })).toBeVisible();
     await expect(page.getByText(/MB/).first()).toBeVisible();
-    await page.getByLabel('Hide video details').click();
-    await expect(page.getByText('Details')).toBeHidden();
     await page.screenshot({ path: 'artifacts/web-player.png', fullPage: true });
     expect(pageErrors).toEqual([]);
   });
@@ -39,7 +36,7 @@ test.describe('Move Sync web', () => {
     const uploadName = `playwright-upload-${Date.now()}.m4v`;
     await page.goto('/');
     const chooser = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Upload' }).click();
+    await page.getByRole('button', { name: 'Upload', exact: true }).click();
     const fileChooser = await chooser;
     await fileChooser.setFiles({
       name: uploadName,

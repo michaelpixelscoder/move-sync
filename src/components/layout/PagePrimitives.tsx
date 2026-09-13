@@ -177,8 +177,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.space.sm,
     paddingHorizontal: theme.space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.color.divider,
   },
   statusLabel: { ...textStyles.meta, flex: 1 },
   statusValue: { ...textStyles.status, maxWidth: '55%', textAlign: 'right' },

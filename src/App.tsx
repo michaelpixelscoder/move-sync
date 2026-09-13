@@ -55,6 +55,9 @@ function MoveSync() {
       <MediaLibraryScreen
         clientKey={clientKey}
         onOpen={(mediaId) => navigate({ name: 'player', mediaId })}
+        onOpenPlaylist={(playlistId) =>
+          navigate({ name: 'playlist', playlistId })
+        }
       />
     ) : screen.name === 'playlists' ? (
       <PlaylistsScreen

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useMutation, useQuery } from 'convex/react';
@@ -22,6 +22,7 @@ import {
   PlayerDestructiveConfirmation,
 } from '../components/PlayerActionMenu';
 import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
+import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 
 export function PlayerScreen({
   clientKey,
@@ -44,6 +45,8 @@ export function PlayerScreen({
   const [playlistPickerVisible, setPlaylistPickerVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [firstFrameReady, setFirstFrameReady] = useState(false);
+  const isOnline = useOnlineStatus();
   const player = useVideoPlayer(item?.videoUrl ?? null, (instance) => {
     instance.timeUpdateEventInterval = 0.5;
   });
@@ -130,11 +133,27 @@ export function PlayerScreen({
           <Text style={styles.errorText}>{error ?? playbackError}</Text>
         </View>
       ) : null}
+      {!isOnline ? (
+        <View style={styles.inlineError} accessibilityLiveRegion="polite">
+          <Text style={styles.errorText}>
+            You're offline. Playback will resume if this video is already
+            buffered; otherwise reconnect and retry.
+          </Text>
+        </View>
+      ) : null}
       <ContentFrame
         width="wide"
         style={[styles.layout, isDesktop && styles.layoutDesktop]}
       >
         <View style={styles.videoPanel}>
+          {!firstFrameReady && media.thumbnailUrl ? (
+            <Image
+              accessibilityLabel={`Poster for ${titleFromFilename(media.filename)}`}
+              source={{ uri: media.thumbnailUrl }}
+              resizeMode="cover"
+              style={styles.poster}
+            />
+          ) : null}
           {playback.status === 'loading' ? (
             <View accessibilityLiveRegion="polite" style={styles.loading}>
               <Text style={styles.loadingText}>Loading video…</Text>
@@ -149,9 +168,34 @@ export function PlayerScreen({
             fullscreenOptions={{ enable: true }}
             allowsPictureInPicture
             startsPictureInPictureAutomatically={false}
+            onFirstFrameRender={() => setFirstFrameReady(true)}
           />
+          {playback.status === 'error' || (!isOnline && !firstFrameReady) ? (
+            <View style={styles.recovery}>
+              <Text style={styles.loadingText}>
+                Video unavailable right now
+              </Text>
+              <Text
+                accessibilityRole="button"
+                accessibilityLabel="Retry video playback"
+                onPress={() => {
+                  setFirstFrameReady(false);
+                  player.replace(media.videoUrl);
+                }}
+                style={styles.retry}
+              >
+                Retry
+              </Text>
+            </View>
+          ) : null}
         </View>
-        {isDesktop ? <PlayerInspector item={media} heading="Details" /> : null}
+        {isDesktop ? (
+          <PlayerInspector
+            clientKey={clientKey}
+            item={media}
+            heading="Details"
+          />
+        ) : null}
       </ContentFrame>
       <BottomSheet
         visible={details && !isDesktop}
@@ -159,7 +203,7 @@ export function PlayerScreen({
         label="Close details"
       >
         <Text style={styles.sheetTitle}>{productCopy.player.detailsTitle}</Text>
-        <PlayerInspector compact item={media} />
+        <PlayerInspector clientKey={clientKey} compact item={media} />
       </BottomSheet>
       <PlayerActionMenu
         visible={actionsVisible}
@@ -213,6 +257,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
   },
   video: { width: '100%', flex: 1, minHeight: 300 },
+  poster: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 1,
+    width: '100%',
+    height: '100%',
+  },
   loading: {
     ...StyleSheet.absoluteFill,
     zIndex: 1,
@@ -221,5 +271,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.mediaCanvas,
   },
   loadingText: textStyles.meta,
+  recovery: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.space.sm,
+    backgroundColor: theme.color.overlay,
+  },
+  retry: {
+    ...theme.type.button,
+    color: theme.color.accent,
+    minHeight: theme.size.touch,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+  },
   sheetTitle: { ...textStyles.sectionTitle, marginBottom: theme.space.sm },
 });

@@ -8,15 +8,23 @@ import {
   DetailPanel,
   StatusRow,
 } from '../../../components/layout/PagePrimitives';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 export function PlayerInspector({
   item,
+  clientKey,
   compact = false,
   heading,
 }: {
   item: MediaRecord;
+  clientKey: string;
   compact?: boolean;
   heading?: string;
 }) {
+  const memberships = useQuery(api.playlists.membershipsForMedia, {
+    clientKey,
+    mediaId: item._id,
+  });
   const rows = [
     ['folder-outline', 'Size', formatBytes(item.sizeBytes)],
     ['time-outline', 'Duration', formatDuration(item.durationMs)],
@@ -86,6 +94,23 @@ export function PlayerInspector({
             item.storage.localAvailable ? 'Available locally' : 'Cloud only'
           }
           tone={item.storage.localAvailable ? 'success' : 'default'}
+        />
+        <StatusRow
+          icon={
+            <Ionicons
+              name="list-outline"
+              size={19}
+              color={theme.color.textSecondary}
+            />
+          }
+          label="Playlists"
+          value={
+            memberships === undefined
+              ? 'Loading…'
+              : memberships.length
+                ? memberships.map((playlist) => playlist.name).join(', ')
+                : 'Not in a playlist'
+          }
         />
       </DetailPanel>
     </ScrollView>

@@ -1,4 +1,5 @@
 import {
+  Animated,
   Modal,
   Platform,
   Pressable,
@@ -7,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { CollectionRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
@@ -19,6 +21,7 @@ import {
 import { productCopy } from '../../../content/productCopy';
 import { Button } from '../../../components/ui/Button';
 import { formatBytes, formatDate } from '../../../lib/format';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 
 export function BackupWebNotice() {
   return (
@@ -94,6 +97,17 @@ export function ReclaimableStorageCard({
   result?: string;
   onPress: () => void;
 }) {
+  const reducedMotion = useReducedMotion();
+  const emphasis = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reducedMotion) return;
+    emphasis.setValue(0.72);
+    Animated.timing(emphasis, {
+      toValue: 1,
+      duration: theme.motion.slow,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [bytes, emphasis, reducedMotion]);
   return (
     <View style={styles.reclaimCard}>
       <View style={styles.reclaimIcon}>
@@ -104,9 +118,12 @@ export function ReclaimableStorageCard({
         />
       </View>
       <View style={styles.reclaimCopy}>
-        <Text style={styles.reclaimTitle}>
+        <Animated.Text
+          accessibilityLiveRegion="polite"
+          style={[styles.reclaimTitle, { opacity: emphasis }]}
+        >
           {formatBytes(bytes)} ready to free
-        </Text>
+        </Animated.Text>
         <Text style={styles.reclaimMeta}>
           {count
             ? `${count} safely backed-up video${count === 1 ? '' : 's'} can be removed from this phone.`
@@ -260,7 +277,8 @@ function CollectionRow({
           accessibilityRole="button"
           accessibilityLabel={`Attach ${item.name} to playlists`}
           onPress={onManagePlaylists}
-          hitSlop={8}
+          hitSlop={4}
+          style={styles.playlistLink}
         >
           <Text style={styles.rowPlaylists}>
             {item.playlistIds.length
@@ -356,6 +374,11 @@ const styles = StyleSheet.create({
     ...textStyles.status,
     color: theme.color.accent,
     marginTop: theme.space.xxs,
+  },
+  playlistLink: {
+    minHeight: theme.size.touch,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
   sync: {
     marginTop: theme.space.md,

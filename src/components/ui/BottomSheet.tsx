@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { theme } from '../../theme/tokens';
 import { IconButton } from './IconButton';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 /** Shared mobile disclosure surface; Modal keeps the native back action correct. */
 export function BottomSheet({
@@ -14,10 +15,11 @@ export function BottomSheet({
   onClose: () => void;
   label?: string;
 }>) {
+  const reducedMotion = useReducedMotion();
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={reducedMotion ? 'fade' : 'slide'}
       transparent
       onRequestClose={onClose}
     >

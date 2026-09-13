@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -22,6 +22,7 @@ import {
 import { storageStateLabel } from '../../../content/productCopy';
 import { ProgressBar } from '../../../components/ui/ProgressBar';
 import { IconButton } from '../../../components/ui/IconButton';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 
 type Props = {
   item: MediaRecord;
@@ -111,13 +112,22 @@ export function MediaCard({
 }
 
 export function MediaThumbnail({ item }: { item: MediaRecord }) {
+  const reducedMotion = useReducedMotion();
+  const opacity = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
   return (
     <View style={styles.visual}>
       {item.thumbnailUrl ? (
-        <Image
+        <Animated.Image
           accessibilityLabel={`Thumbnail for ${titleFromFilename(item.filename)}`}
           source={{ uri: item.thumbnailUrl }}
-          style={styles.image}
+          style={[styles.image, { opacity }]}
+          onLoad={() =>
+            Animated.timing(opacity, {
+              toValue: 1,
+              duration: reducedMotion ? 0 : theme.motion.standard,
+              useNativeDriver: Platform.OS !== 'web',
+            }).start()
+          }
         />
       ) : (
         <View
@@ -308,6 +318,10 @@ const styles = StyleSheet.create({
     zIndex: 3,
     right: theme.space.xs,
     top: theme.space.xs,
+    width: theme.size.touch,
+    height: theme.size.touch,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menu: { position: 'absolute', right: theme.space.xs, bottom: 20 },
   body: {

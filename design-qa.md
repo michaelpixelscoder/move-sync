@@ -12,6 +12,14 @@
 
 Before release, verify Videos, Backup, Playlists, the player, activity, empty/error states, and destructive confirmations at desktop, tablet, and phone widths. Test physical iOS/Android permissions, background work, playback, sharing, local deletion, offline recovery, and accessibility settings.
 
+## Accessibility audit
+
+- Core semantic colors meet WCAG AA against the canvas: primary text 19.20:1, secondary text 7.69:1, tertiary text 4.80:1, accent 4.94:1, success 8.43:1, warning 8.94:1, and danger 5.10:1.
+- Shared buttons, icon buttons, search, card-selection controls, collection links, and modal dismiss targets use a minimum 44-point interactive area.
+- Page and section titles expose heading semantics; progress bars expose numeric accessibility values; upload, storage-recovery, offline, and deletion results use text and live-region announcements rather than color alone.
+- Keyboard focus uses the high-contrast focus token. Destructive actions remain in labeled menus or confirmation dialogs and name the affected video or batch consequence.
+- Reduced-motion mode suppresses scale and sliding motion while retaining opacity and state feedback.
+
 ## Card fidelity note
 
 **Comparison target**

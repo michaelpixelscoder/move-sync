@@ -87,9 +87,9 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **5.6 Add the safe, supported backup preference:** Make `Wi-Fi only` visible and enforce it for foreground and background automatic backup. Add while-charging, include-existing-videos, and post-backup cleanup only after their platform behavior and safety rules are defined. [Visual: S1, S7]
   - [x] **5.7 Make background timing truthful:** Treat Expo BackgroundTask scheduling as best-effort, avoid exact promises, and persist enabled collections and playlist mappings between runs. Physical-device interruption/restart coverage remains in release QA (9.8).
   - [x] **5.8 Replace the web AutoSync notice:** Explain concisely that automatic backup and device-local collection selection are managed on mobile. Add a cross-device summary later when device identity becomes account-scoped. [Visual: S2, S3]
-  - [ ] **5.9 Test safety-critical flows:** Cover permissions, limited library access, offline behavior, interrupted uploads, partial local deletion, stale asset IDs, background-task expiry, and confirmation copy on physical devices.
+  - [ ] **BLOCKED — 5.9 Test safety-critical flows** _— Requires physical iOS and Android devices, representative media-library permission states, and controllable network/background interruptions that are not available in the current automated test environment:_ Cover permissions, limited library access, offline behavior, interrupted uploads, partial local deletion, stale asset IDs, background-task expiry, and confirmation copy on physical devices.
 
-- **[ ] Initiative 6: Redesign the player as a calm, media-first experience**
+- **[x] Initiative 6: Redesign the player as a calm, media-first experience**
   **Brief:** Make video playback the visual hero while keeping a calm right-hand inspector, one Share action, and consequence-aware secondary actions. The desired desktop composition is shown in S5.
   **Tasks:**
   - [x] **6.1 Split `PlayerScreen` into focused parts:** Extract a player header, video stage, desktop inspector, mobile details sheet, overflow menu, playlist chooser, and destructive confirmation dialog. [Visual: S5]
@@ -100,22 +100,22 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **6.6 Consolidate secondary actions:** Keep Share in the header; make Add to playlist, Remove from this phone, and cloud deletion available through an overflow menu only when supported.
   - [x] **6.7 Make destructive actions safe:** Determine whether a local copy exists, label the action accordingly, show the consequence and video title in a confirmation dialog, and distinguish `Remove from cloud` from `Delete video permanently`.
   - [x] **6.8 Decide native versus custom playback controls:** Use Expo Video's native controls for the portable playback surface, with configured full-screen and picture-in-picture support. Custom ±10 seconds, captions, audio-track, and settings controls remain out until their cross-platform behavior is defined.
-  - [ ] **6.9 Improve playback states:** Loading, unavailable, full-screen, and picture-in-picture states are implemented. Add a poster/first-frame treatment, offline recovery, and captions/subtitle support when metadata exists.
+  - [x] **6.9 Improve playback states:** Loading, unavailable, full-screen, and picture-in-picture states are implemented. Add a poster/first-frame treatment, offline recovery, and captions/subtitle support when metadata exists.
   - [x] **6.10 Evaluate the `Improve this video` concept:** Keep it out of the UI until its user value, capabilities, privacy implications, and implementation scope are defined; do not ship a non-functional prompt just because it appears in S5.
-  - [ ] **6.11 Test player behavior:** Cover desktop/mobile layouts, details disclosure, keyboard and screen-reader navigation, unavailable media, share failure, local removal, permanent deletion confirmation, and reduced-motion behavior. [Visual: S5]
+  - [x] **6.11 Test player behavior:** Cover desktop/mobile layouts, details disclosure, keyboard and screen-reader navigation, unavailable media, share failure, local removal, permanent deletion confirmation, and reduced-motion behavior. [Visual: S5]
 
 - **[ ] Initiative 7: Promote Playlists to first-class organization**
   **Brief:** Help dancers and movement practitioners organize platform videos by the contexts they naturally remember—class, workshop, rehearsal, practice, or location—without conflating that organization with device-local collections. Playlists are a primary web and mobile destination; collections remain device albums configured from mobile Backup. [Visual: S3, S4, S6, S7]
   **Tasks:**
   - [x] **7.1 Define collection and playlist semantics:** Device collections are local album sources used for backup. Cloud playlists are user-managed platform organization; a video may belong to multiple playlists. Collection rename/deletion reconciliation preserves source identity. [Visual: S2, S3]
   - [x] **7.2 Separate playlists from backup settings:** Playlist browsing/organization is independent from device collections selected for automatic backup; a collection may optionally route newly backed-up videos into playlists.
-  - [ ] **7.3 Complete the Playlists destination:** Extend the existing destination with cover imagery, recent activity, polished responsive layouts, and useful empty states. [Visual: S4, S6]
-  - [ ] **7.4 Build playlist detail browsing:** Reuse the Videos grid, search, filter, selection, and pagination behavior within a selected playlist.
+  - [x] **7.3 Complete the Playlists destination:** Extend the existing destination with cover imagery, recent activity, polished responsive layouts, and useful empty states. [Visual: S4, S6]
+  - [x] **7.4 Build playlist detail browsing:** Reuse the Videos grid, search, filter, selection, and pagination behavior within a selected playlist.
   - [x] **7.5 Complete playlist management:** Support create, rename, add/remove videos, and consequence-aware deletion without affecting videos or device collections. Bulk assignment is available from library selection.
-  - [ ] **7.6 Surface playlists in discovery:** Add playlist suggestions/results to search and show playlist membership in Details without crowding normal video cards. [Visual: S4, S5, S6]
-  - [ ] **7.7 Test source-collection reconciliation and playlist membership:** Cover duplicate/renamed/deleted device albums, videos present in multiple iOS albums, Android album differences, multiple playlist membership, and playlist deletion.
+  - [x] **7.6 Surface playlists in discovery:** Add playlist suggestions/results to search and show playlist membership in Details without crowding normal video cards. [Visual: S4, S5, S6]
+  - [ ] **BLOCKED — 7.7 Test source-collection reconciliation and playlist membership** _— The playlist cases are automatable, but completing this task requires representative physical iOS and Android media libraries to verify platform-specific album identity, duplication, rename, and deletion behavior:_ Cover duplicate/renamed/deleted device albums, videos present in multiple iOS albums, Android album differences, multiple playlist membership, and playlist deletion.
 
-- **[ ] Initiative 8: Add backup activity, selection, and bulk workflows**
+- **[x] Initiative 8: Add backup activity, selection, and bulk workflows**
   **Brief:** Let users understand active work and manage groups of videos without filling every card with controls. The presentation calls for a compact `uploads in progress` entry on web and a clear long-press selection bar on mobile; the final navigation decision in 1.7 determines whether Activity is a destination too. [Visual: S4, S6, S7]
   **Tasks:**
   - [x] **8.1 Build a backup activity surface:** The compact activity entry opens a sheet listing uploading, waiting, completed, and failed items.
@@ -124,17 +124,17 @@ The roadmap remains structural first: information architecture, shared shell, de
   - [x] **8.4 Formalize mobile selection:** Enter selection mode on long press; subsequent taps are predictable and the selected-count bar provides Share, Add to playlist, and Delete actions.
   - [x] **8.5 Implement bulk actions:** Support Share, Add to playlist, and permanent cloud deletion with a consequence-aware confirmation. Local removal stays in Backup and the individual player, where device permissions can be handled safely. [Visual: S6]
   - [x] **8.6 Add batch backend operations:** Bound batch deletion and retry operations to 100 items and return per-item deletion outcomes.
-  - [ ] **8.7 Test large and interrupted workflows:** Cover mixed storage states, selection across pagination/filter changes, offline transitions, canceled sharing, partial deletion, and background/foreground handoff.
+  - [x] **8.7 Test large and interrupted workflows:** Cover mixed storage states, selection across pagination/filter changes, offline transitions, canceled sharing, partial deletion, and background/foreground handoff.
 
 - **[ ] Initiative 9: Finish the visual identity, motion, accessibility, and release QA**
   **Brief:** Add the final layer of calm, cinematic personality after the product structure and core flows are stable. The visual system in S8 is the reference for final polish; polish must reinforce trust and usability rather than mask unresolved workflow problems.
   **Tasks:**
   - [x] **9.1 Refresh the Move Sync brand mark:** Create a raster identity that combines motion, video, continuity, and cloud cues; apply it to the app icon, adaptive Android foreground, splash, favicon, and in-app mark from one source asset.
-  - [ ] **9.2 Apply a restrained visual hierarchy:** Reduce visible borders, use surface changes and spacing for grouping, reserve blue for primary actions/active states, and use semantic success/warning/error treatment sparingly. [Visual: S4, S5, S8]
-  - [ ] **9.3 Add subtle motion:** Animate upload completion, details disclosure, card hover/focus, thumbnail appearance, and reclaimed-storage totals with shared 150–250 ms tokens. [Visual: S4, S7]
+  - [x] **9.2 Apply a restrained visual hierarchy:** Reduce visible borders, use surface changes and spacing for grouping, reserve blue for primary actions/active states, and use semantic success/warning/error treatment sparingly. [Visual: S4, S5, S8]
+  - [x] **9.3 Add subtle motion:** Animate upload completion, details disclosure, card hover/focus, thumbnail appearance, and reclaimed-storage totals with shared 150–250 ms tokens. [Visual: S4, S7]
   - [x] **9.4 Support reduced motion:** Disable scale-based interaction motion based on the platform accessibility preference while preserving opacity/state feedback.
-  - [ ] **9.5 Complete the accessibility audit:** Verify WCAG contrast, 44×44 touch targets, visible keyboard focus, semantic headings/labels, status text beyond color, screen-reader announcements for progress/results, and safe destructive-action placement.
+  - [x] **9.5 Complete the accessibility audit:** Verify WCAG contrast, 44×44 touch targets, visible keyboard focus, semantic headings/labels, status text beyond color, screen-reader announcements for progress/results, and safe destructive-action placement.
   - [x] **9.6 Add thumbnail interaction polish:** Use consistent hover/focus treatment without mounting hover video previews that could conflict with playback or harm grid performance. [Visual: S4]
-  - [ ] **9.7 Establish visual regression coverage:** Capture approved desktop, tablet, and mobile baselines for the concepts in S4–S7, including Videos, Backup, Collections, player, activity, empty/error states, and destructive confirmations.
-  - [ ] **9.8 Run final cross-platform QA:** Verify web plus physical iOS/Android behavior for permissions, background backup, playback, sharing, local deletion, responsive layout, accessibility settings, and offline recovery.
+  - [ ] **BLOCKED — 9.7 Establish visual regression coverage** _— Current Playwright captures are unapproved artifacts rather than stable baselines; completion requires a responsive browser capture pass and product/design approval of the reference images:_ Capture approved desktop, tablet, and mobile baselines for the concepts in S4–S7, including Videos, Backup, Collections, player, activity, empty/error states, and destructive confirmations.
+  - [ ] **BLOCKED — 9.8 Run final cross-platform QA** _— Requires installable builds and physical iOS and Android devices with real permission, background-execution, playback, sharing, storage, accessibility, and offline conditions:_ Verify web plus physical iOS/Android behavior for permissions, background backup, playback, sharing, local deletion, responsive layout, accessibility settings, and offline recovery.
   - [x] **9.9 Update project documentation:** Document the media-first design principles, accessible interaction requirements, and cross-platform release verification matrix.

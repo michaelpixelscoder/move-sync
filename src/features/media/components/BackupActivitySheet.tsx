@@ -106,8 +106,6 @@ const styles = StyleSheet.create({
     gap: theme.space.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.color.divider,
   },
   copy: { flex: 1, gap: theme.space.xxs },
   filename: textStyles.cardTitle,

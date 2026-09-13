@@ -1,6 +1,13 @@
+import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
-import { assertClientKey, assertNonEmpty, playlistValidator } from './shared';
+import {
+  assertClientKey,
+  assertNonEmpty,
+  mediaValidator,
+  playlistValidator,
+} from './shared';
+import { mediaView } from './media';
 
 const MAX_PLAYLISTS = 500;
 const MAX_MEMBERSHIP_MUTATION = 100;
@@ -94,6 +101,71 @@ export const listMediaIds = query({
       .order('desc')
       .take(MAX_PLAYLIST_MEDIA);
     return rows.map((row) => row.mediaId);
+  },
+});
+export const listMediaPage = query({
+  args: {
+    clientKey: v.string(),
+    playlistId: v.id('playlists'),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(mediaValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    splitCursor: v.union(v.string(), v.null()),
+    pageStatus: v.union(
+      v.literal('SplitRecommended'),
+      v.literal('SplitRequired'),
+      v.null(),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    await ownedPlaylist(ctx, args.clientKey, args.playlistId);
+    const result = await ctx.db
+      .query('playlistMedia')
+      .withIndex('by_playlist', (q) => q.eq('playlistId', args.playlistId))
+      .order('desc')
+      .paginate(args.paginationOpts);
+    const page = [];
+    for (const membership of result.page) {
+      const media = await ctx.db.get(membership.mediaId);
+      if (media?.clientKey === args.clientKey)
+        page.push(await mediaView(ctx, media));
+    }
+    return {
+      page,
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+      splitCursor: result.splitCursor ?? null,
+      pageStatus: result.pageStatus ?? null,
+    };
+  },
+});
+
+export const membershipsForMedia = query({
+  args: { clientKey: v.string(), mediaId: v.id('media') },
+  returns: v.array(v.object({ id: v.id('playlists'), name: v.string() })),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const media = await ctx.db.get(args.mediaId);
+    if (!media || media.clientKey !== args.clientKey)
+      throw new ConvexError('Video not found');
+    const memberships = await ctx.db
+      .query('playlistMedia')
+      .withIndex('by_media', (q) => q.eq('mediaId', args.mediaId))
+      .take(100);
+    const result: {
+      id: (typeof memberships)[number]['playlistId'];
+      name: string;
+    }[] = [];
+    for (const membership of memberships) {
+      const playlist = await ctx.db.get(membership.playlistId);
+      if (playlist?.clientKey === args.clientKey)
+        result.push({ id: playlist._id, name: playlist.name });
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 export const create = mutation({

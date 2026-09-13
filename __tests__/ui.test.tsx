@@ -12,6 +12,8 @@ import {
 } from '../src/lib/format';
 import { backupStateLabel } from '../src/content/productCopy';
 import type { MediaRecord } from '../src/types/domain';
+import { shareMedia } from '../src/features/media/services/share';
+import { PlayerDestructiveConfirmation } from '../src/features/player/components/PlayerActionMenu';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('convex/react', () => ({ useQuery: () => [] }));
@@ -155,5 +157,27 @@ describe('shared UI and formatters', () => {
     expect(onNavigate).toHaveBeenCalledWith({ name: 'playlists' });
     fireEvent.press(mobile.getByRole('button', { name: 'Settings' }));
     expect(onNavigate).toHaveBeenCalledWith({ name: 'settings' });
+  });
+  it('fails safely when sharing unavailable cloud media', async () => {
+    await expect(shareMedia([{ ...item, videoUrl: null }])).rejects.toThrow(
+      /not available in cloud storage/i,
+    );
+  });
+  it('names the permanent deletion consequence and supports cancellation', () => {
+    const onCancel = jest.fn();
+    const ui = render(
+      <PlayerDestructiveConfirmation
+        visible
+        filename="Evening rehearsal"
+        removeOnlyCloud={false}
+        busy={false}
+        onCancel={onCancel}
+        onConfirm={jest.fn()}
+      />,
+    );
+    expect(ui.getByText(/Evening rehearsal/)).toBeTruthy();
+    expect(ui.getAllByText(/permanently/i).length).toBeGreaterThan(0);
+    fireEvent.press(ui.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

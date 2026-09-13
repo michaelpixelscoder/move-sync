@@ -380,6 +380,35 @@ describe('Move Sync backend', () => {
         })
       ).videoCount,
     ).toBe(1);
+    const page = await t.query(api.playlists.listMediaPage, {
+      clientKey: ownerKey,
+      playlistId: rehearsal._id,
+      paginationOpts: { cursor: null, numItems: 1 },
+    });
+    expect(page.page).toHaveLength(1);
+    expect(page.isDone).toBe(false);
+    expect(
+      await t.query(api.playlists.membershipsForMedia, {
+        clientKey: ownerKey,
+        mediaId: first,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Rehearsal' }),
+        expect.objectContaining({ name: 'Favorites' }),
+      ]),
+    );
+    const outcomes = await t.mutation(api.media.removeMany, {
+      clientKey: ownerKey,
+      ids: [first, first],
+    });
+    expect(outcomes).toEqual([{ id: first, removed: true, error: null }]);
+    expect(
+      await t.query(api.playlists.listMediaIds, {
+        clientKey: ownerKey,
+        playlistId: favorites._id,
+      }),
+    ).toEqual([]);
     await expect(
       t.mutation(api.playlists.addMedia, {
         clientKey: otherKey,

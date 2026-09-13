@@ -33,11 +33,19 @@ import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
 import { BackupActivitySheet } from '../components/BackupActivitySheet';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
 
-type Props = { clientKey: string; onOpen: (id: Id<'media'>) => void };
+type Props = {
+  clientKey: string;
+  onOpen: (id: Id<'media'>) => void;
+  onOpenPlaylist: (id: Id<'playlists'>) => void;
+};
 type Sort = 'asc' | 'desc';
 type DateSection = { label: string; rows: MediaRecord[] };
 
-export function MediaLibraryScreen({ clientKey, onOpen }: Props) {
+export function MediaLibraryScreen({
+  clientKey,
+  onOpen,
+  onOpenPlaylist,
+}: Props) {
   const { width, isDesktop, isMobile, isWide } = useResponsive();
   const isOnline = useOnlineStatus();
   const [scope, setScope] = useState<LibraryScope>('all');
@@ -76,6 +84,20 @@ export function MediaLibraryScreen({ clientKey, onOpen }: Props) {
     { initialNumItems: 24 },
   );
   const summary = useQuery(api.media.summary, { clientKey });
+  const playlists = useQuery(api.playlists.list, { clientKey });
+  const playlistMatches = useMemo(
+    () =>
+      debouncedSearch
+        ? (playlists ?? [])
+            .filter((playlist) =>
+              playlist.name
+                .toLocaleLowerCase()
+                .includes(debouncedSearch.toLocaleLowerCase()),
+            )
+            .slice(0, 5)
+        : [],
+    [debouncedSearch, playlists],
+  );
   const activeActivities = useQuery(api.activity.listPage, {
     clientKey,
     state: 'uploading',
@@ -227,6 +249,24 @@ export function MediaLibraryScreen({ clientKey, onOpen }: Props) {
         onToggleIssues={() => setIssuesOnly((value) => !value)}
         onClose={() => setFiltersOpen(false)}
       />
+      {playlistMatches.length ? (
+        <ContentFrame width="wide" style={styles.playlistMatches}>
+          <Text accessibilityRole="header" style={styles.playlistMatchTitle}>
+            Matching playlists
+          </Text>
+          <View style={styles.playlistMatchList}>
+            {playlistMatches.map((playlist) => (
+              <Button
+                key={playlist._id}
+                label={`${playlist.name} · ${playlist.videoCount}`}
+                icon="list-outline"
+                tone="secondary"
+                onPress={() => onOpenPlaylist(playlist._id)}
+              />
+            ))}
+          </View>
+        </ContentFrame>
+      ) : null}
       <UploadActivity
         uploads={uploads}
         activeUploadCount={summary?.activeUploadCount ?? 0}
@@ -424,6 +464,13 @@ const styles = StyleSheet.create({
   section: { marginBottom: theme.space.xl, gap: theme.space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   more: { alignItems: 'center', marginTop: theme.space.sm },
+  playlistMatches: { paddingBottom: theme.space.md, gap: theme.space.xs },
+  playlistMatchTitle: textStyles.cardTitle,
+  playlistMatchList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.space.xs,
+  },
   selection: {
     position: 'absolute',
     left: theme.space.lg,

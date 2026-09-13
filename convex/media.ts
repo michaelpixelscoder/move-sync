@@ -271,6 +271,20 @@ async function requireOwnedMedia(
     throw new ConvexError('Media not found');
   return media;
 }
+async function removePlaylistMemberships(
+  ctx: MutationCtx,
+  mediaId: Id<'media'>,
+) {
+  const memberships = await ctx.db
+    .query('playlistMedia')
+    .withIndex('by_media', (q) => q.eq('mediaId', mediaId))
+    .take(101);
+  if (memberships.length > 100)
+    throw new ConvexError(
+      'Video belongs to too many playlists to delete safely',
+    );
+  for (const membership of memberships) await ctx.db.delete(membership._id);
+}
 async function requireOwnedCollection(
   ctx: Ctx,
   id: Id<'collections'>,
@@ -288,7 +302,7 @@ async function currentDevice(ctx: MutationCtx, clientKey: string) {
     .unique();
 }
 
-async function mediaView(ctx: Ctx, media: Doc<'media'>) {
+export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
   const [videoUrl, thumbnailUrl, collection] = await Promise.all([
     media.storageId
       ? ctx.storage.getUrl(media.storageId)
@@ -1110,6 +1124,7 @@ export const remove = mutation({
     if (media.storageId) await ctx.storage.delete(media.storageId);
     if (media.thumbnailStorageId)
       await ctx.storage.delete(media.thumbnailStorageId);
+    await removePlaylistMemberships(ctx, media._id);
     await ctx.db.delete(media._id);
     await updateSummary(ctx, args.clientKey, media);
     return null;
@@ -1139,6 +1154,7 @@ export const removeMany = mutation({
       if (media.storageId) await ctx.storage.delete(media.storageId);
       if (media.thumbnailStorageId)
         await ctx.storage.delete(media.thumbnailStorageId);
+      await removePlaylistMemberships(ctx, media._id);
       await ctx.db.delete(media._id);
       await updateSummary(ctx, args.clientKey, media);
       outcomes.push({ id, removed: true, error: null });
