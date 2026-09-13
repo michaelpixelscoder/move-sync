@@ -104,11 +104,17 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
           collections: toCollectionReconcileInput(collections),
         }),
       ]);
+      const sizes = new Map(
+        collections.map((collection) => [
+          collection.localId,
+          collection.sizeBytes,
+        ]),
+      );
       setDeviceRows(
         applyCollectionPlaylistPreferences(
           applyAutoSyncPreferences(reconciled, enabledIds),
           playlistMap,
-        ),
+        ).map((row) => ({ ...row, sizeBytes: sizes.get(row.localId) ?? 0 })),
       );
     } catch (value) {
       setError(
@@ -167,10 +173,12 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   };
   const updateWifiOnly = (enabled: boolean) => {
     setWifiOnly(enabled);
-    void setWifiOnlyPreference(enabled).then(() => refreshForegroundSync(clientKey)).catch(() => {
-      setWifiOnly(!enabled);
-      setError('Unable to save the Wi-Fi preference.');
-    });
+    void setWifiOnlyPreference(enabled)
+      .then(() => refreshForegroundSync(clientKey))
+      .catch(() => {
+        setWifiOnly(!enabled);
+        setError('Unable to save the Wi-Fi preference.');
+      });
   };
   const confirmCleanup = async () => {
     setConfirmingCleanup(false);

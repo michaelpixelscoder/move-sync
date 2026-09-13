@@ -94,6 +94,15 @@ async function complete(
     ...metadata,
     localAssetId: metadata.localAssetId,
   });
+  // enqueue is idempotent. A repeated selection of an already backed-up file
+  // returns its existing ID, so there is no upload work left to do.
+  if (
+    await convex.query(api.media.hasLocalAsset, {
+      clientKey,
+      localAssetId: metadata.localAssetId,
+    })
+  )
+    return mediaId;
   try {
     const storageId = await sendToStorage(clientKey, source, mediaId);
     const thumbnail = await makeThumbnail(

@@ -4,11 +4,14 @@ import android.app.*
 import android.content.*
 import android.database.ContentObserver
 import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
+import java.io.ByteArrayOutputStream
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** A process-independent media scanner and uploader. JS only supplies its config snapshot. */
 class ForegroundSyncService : Service() {
   companion object {
+    private const val TAG = "MoveSyncForeground"
     const val ACTION_START = "app.movesync.foregroundsync.START"
     const val ACTION_STOP = "app.movesync.foregroundsync.STOP"
     const val ACTION_PAUSE = "app.movesync.foregroundsync.PAUSE"
@@ -61,10 +65,11 @@ class ForegroundSyncService : Service() {
 
   override fun onBind(intent: Intent?) = null
   override fun onCreate() {
-    super.onCreate(); store = ForegroundSyncStore(this); createChannel()
+    super.onCreate(); Log.i(TAG, "service onCreate"); store = ForegroundSyncStore(this); createChannel()
     observer = object : ContentObserver(handler) { override fun onChange(selfChange: Boolean, uri: Uri?) { scheduleScan(10_000L) } }
   }
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    Log.i(TAG, "onStartCommand action=${intent?.action}")
     when (intent?.action ?: ACTION_START) {
       ACTION_STOP -> { stopEverything(); return START_NOT_STICKY }
       ACTION_PAUSE -> { prefs().edit().putBoolean(KEY_PAUSED, true).apply(); showNotification("Backup paused"); emit("ForegroundSync:state", mapOf("running" to true, "paused" to true)); return START_NOT_STICKY }
@@ -74,6 +79,7 @@ class ForegroundSyncService : Service() {
     return START_NOT_STICKY // Explicit restart occurs when the user opens the app again.
   }
   private fun startEverything() {
+    Log.i(TAG, "startEverything collections=${config().optJSONArray("collections")?.length() ?: 0}")
     if (config().optJSONArray("collections")?.length() != null && config().getJSONArray("collections").length() == 0) { stopEverything(); return }
     prefs().edit().putBoolean(KEY_RUNNING, true).apply(); showNotification("Looking for new videos"); emit("ForegroundSync:state", mapOf("running" to true, "paused" to false))
     contentResolver.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer)
@@ -85,10 +91,12 @@ class ForegroundSyncService : Service() {
   }
   private fun scheduleScan(delay: Long) { if (!prefs().getBoolean(KEY_PAUSED, false)) { handler.removeCallbacks(scan); handler.postDelayed(scan, delay) } }
   private fun scanAndUpload() {
-    if (prefs().getBoolean(KEY_PAUSED, false) || !networkAllowed()) return
+    if (prefs().getBoolean(KEY_PAUSED, false)) { Log.i(TAG, "scan skipped: paused"); return }
+    if (!networkAllowed()) { Log.i(TAG, "scan skipped: network not allowed"); return }
     if (!working.compareAndSet(false, true)) return
     try {
       val cfg = config(); val collections = cfg.optJSONArray("collections") ?: return
+      Log.i(TAG, "scan started collections=${collections.length()}")
       val byBucket = (0 until collections.length()).associate { val c = collections.getJSONObject(it); c.optString("localId") to c }
       val resolver = contentResolver
       resolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.BUCKET_ID, MediaStore.Video.Media.DATE_MODIFIED, MediaStore.Video.Media.SIZE, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.MIME_TYPE, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.DATE_TAKEN, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT), null, null, "${MediaStore.Video.Media.DATE_MODIFIED} DESC")?.use { cursor ->
@@ -100,9 +108,10 @@ class ForegroundSyncService : Service() {
           candidates.add(MediaRow(key, Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString()), cursor.getString(4) ?: "video.mp4", cursor.getString(5) ?: "video/mp4", size, cursor.getLong(6), cursor.getLong(7), cursor.getInt(8), cursor.getInt(9), collection))
         }
         pending = candidates.size; showNotification(if (pending == 0) "Backup is up to date" else "Uploading 0 of $pending"); emit("ForegroundSync:progress", mapOf("pending" to pending, "uploaded" to uploaded))
-        candidates.forEachIndexed { index, row -> upload(row, cfg, index) }
+        Log.i(TAG, "scan found candidates=${candidates.size}")
+        candidates.forEachIndexed { index, row -> Log.i(TAG, "upload candidate=${row.filename} size=${row.size}"); upload(row, cfg, index) }
       }
-    } catch (error: Exception) { showNotification("Backup waiting to retry"); handler.postDelayed(scan, 30_000L) }
+    } catch (error: Exception) { Log.e(TAG, "scan failed", error); showNotification("Backup waiting to retry"); handler.postDelayed(scan, 30_000L) }
     finally { working.set(false) }
   }
   private fun upload(row: MediaRow, cfg: JSONObject, index: Int) {
@@ -113,7 +122,10 @@ class ForegroundSyncService : Service() {
       val mediaId = mutation(cfg, "media:enqueue", args).toString()
       val uploadUrl = mutation(cfg, "media:generateUploadUrl", JSONObject().put("clientKey", cfg.getString("clientKey")).put("id", mediaId)).toString()
       val storageId = uploadFile(uploadUrl, row)
-      val cloudId = mutation(cfg, "media:completeUpload", args.put("id", mediaId).put("storageId", storageId)).toString()
+      val thumbnailStorageId = createAndUploadThumbnail(cfg, mediaId, row)
+      val completion = args.put("id", mediaId).put("storageId", storageId)
+      if (thumbnailStorageId != null) completion.put("thumbnailStorageId", thumbnailStorageId)
+      val cloudId = mutation(cfg, "media:completeUpload", completion).toString()
       val playlists = row.collection.optJSONArray("playlistIds") ?: JSONArray()
       for (i in 0 until playlists.length()) mutation(cfg, "playlists:addMedia", JSONObject().put("clientKey", cfg.getString("clientKey")).put("playlistId", playlists.getString(i)).put("mediaIds", JSONArray().put(cloudId)))
       store.uploaded(row.key, cloudId); uploaded++; pending--; showNotification(if (pending > 0) "Uploading ${index + 1} of ${index + 1 + pending}" else "Backup is up to date"); emit("ForegroundSync:uploaded", mapOf("localId" to row.key, "cloudId" to cloudId, "collectionLocalId" to row.collection.getString("localId"))); emit("ForegroundSync:progress", mapOf("pending" to pending, "uploaded" to uploaded))
@@ -131,6 +143,30 @@ class ForegroundSyncService : Service() {
     contentResolver.openInputStream(row.uri)?.use { input -> connection.outputStream.use { output -> input.copyTo(output, 64 * 1024) } } ?: throw IllegalStateException("Unable to read ${row.uri}")
     val body = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream).bufferedReader().use { it.readText() }
     if (connection.responseCode !in 200..299) throw IllegalStateException("Storage upload failed: $body")
+    return JSONObject(body).getString("storageId")
+  }
+  private fun createAndUploadThumbnail(cfg: JSONObject, mediaId: String, row: MediaRow): String? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+      retriever.setDataSource(this, row.uri)
+      val bitmap = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: return null
+      val bytes = ByteArrayOutputStream().use { output ->
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 82, output)) return null
+        output.toByteArray()
+      }
+      if (bytes.isEmpty()) return null
+      val url = mutation(cfg, "media:generateUploadUrl", JSONObject().put("clientKey", cfg.getString("clientKey")).put("id", mediaId)).toString()
+      uploadBytes(url, bytes)
+    } catch (error: Exception) {
+      Log.w(TAG, "thumbnail generation skipped for ${row.filename}", error)
+      null
+    } finally { retriever.release() }
+  }
+  private fun uploadBytes(url: String, bytes: ByteArray): String {
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply { requestMethod = "POST"; doOutput = true; setRequestProperty("Content-Type", "image/jpeg"); setFixedLengthStreamingMode(bytes.size); connectTimeout = 20_000; readTimeout = 60_000 }
+    connection.outputStream.use { it.write(bytes) }
+    val body = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream).bufferedReader().use { it.readText() }
+    if (connection.responseCode !in 200..299) throw IllegalStateException("Thumbnail upload failed: $body")
     return JSONObject(body).getString("storageId")
   }
   private fun networkAllowed(): Boolean {

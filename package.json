@@ -4,7 +4,9 @@
   "main": "index.ts",
   "expo": {
     "autolinking": {
-      "searchPaths": ["./modules"]
+      "searchPaths": [
+        "./modules"
+      ]
     }
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "expo-font": "~57.0.2",
     "expo-linear-gradient": "~57.0.1",
     "expo-media-library": "~57.0.4",
+    "expo-modules-core": "~57.0.14",
     "expo-secure-store": "~57.0.2",
     "expo-sharing": "~57.0.16",
     "expo-status-bar": "~57.0.1",
@@ -62,6 +65,7 @@
     "build:preview:ios": "eas build --platform ios --profile preview",
     "test": "jest --runInBand",
     "test:backend": "vitest run",
+    "test:foreground-sync": "node scripts/test-foreground-sync.mjs",
     "test:web": "playwright test",
     "seed:demo": "node scripts/seed-demo.mjs",
     "typecheck": "tsc --noEmit",

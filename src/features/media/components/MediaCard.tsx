@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Platform,
   Pressable,
@@ -131,16 +130,15 @@ export function MediaThumbnail({ item }: { item: MediaRecord }) {
         />
       ) : (
         <View
-          accessibilityLabel="Thumbnail processing"
+          accessibilityLabel="Thumbnail unavailable"
           style={styles.videoFallback}
         >
-          <ActivityIndicator color={theme.color.textSecondary} />
           <Ionicons
             name="videocam-outline"
             color={theme.color.textSecondary}
             size={24}
           />
-          <Text style={styles.fallbackText}>Thumbnail processing</Text>
+          <Text style={styles.fallbackText}>Thumbnail unavailable</Text>
         </View>
       )}
       <LinearGradient

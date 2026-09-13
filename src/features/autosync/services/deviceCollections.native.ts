@@ -26,8 +26,16 @@ export async function readDeviceCollections() {
         await Promise.all(
           videos.map(async (asset) => {
             try {
+              const assetSize = (asset as { fileSize?: number }).fileSize;
+              if (typeof assetSize === 'number' && assetSize > 0)
+                return assetSize;
               const info = await asset.getInfo();
-              return new File(info.uri).size;
+              const reportedSize = (info as { size?: number }).size;
+              if (typeof reportedSize === 'number' && reportedSize > 0)
+                return reportedSize;
+              const file = new File(info.uri);
+              const size = file.size;
+              return typeof size === 'number' && size > 0 ? size : 0;
             } catch {
               return 0;
             }

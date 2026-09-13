@@ -1,4 +1,5 @@
-import { NativeModules, Platform, type EmitterSubscription } from 'react-native';
+import { Platform, type EmitterSubscription } from 'react-native';
+import { requireNativeModule } from 'expo-modules-core';
 
 export type ForegroundSyncCollection = {
   localId: string;
@@ -29,31 +30,61 @@ type NativeForegroundSync = {
   stop(): Promise<void>;
   getStatus(): Promise<Omit<ForegroundSyncStatus, 'supported'>>;
   setPaused(paused: boolean): Promise<void>;
-  addListener(event: string, listener: (event: unknown) => void): EmitterSubscription;
+  addListener(
+    event: string,
+    listener: (event: unknown) => void,
+  ): EmitterSubscription;
 };
 
-const nativeModule = NativeModules.MoveSyncForegroundSync as
-  | NativeForegroundSync
-  | undefined;
+const nativeModule: NativeForegroundSync | undefined =
+  Platform.OS === 'android'
+    ? (() => {
+        try {
+          return requireNativeModule<NativeForegroundSync>(
+            'MoveSyncForegroundSync',
+          );
+        } catch {
+          return undefined;
+        }
+      })()
+    : undefined;
 
 export const foregroundSync = {
   supported: Platform.OS === 'android' && Boolean(nativeModule),
   async configure(config: ForegroundSyncConfig) {
-    if (Platform.OS === 'android' && nativeModule) await nativeModule.configure(config);
+    if (Platform.OS === 'android' && !nativeModule)
+      console.warn(
+        'MoveSyncForegroundSync configure skipped: native module unavailable',
+      );
+    if (Platform.OS === 'android' && nativeModule)
+      await nativeModule.configure(config);
   },
   async start(options?: { onlyOnWifi?: boolean }) {
-    if (Platform.OS === 'android' && nativeModule) await nativeModule.start(options);
+    if (Platform.OS === 'android' && !nativeModule)
+      console.warn(
+        'MoveSyncForegroundSync start skipped: native module unavailable',
+      );
+    if (Platform.OS === 'android' && nativeModule)
+      await nativeModule.start(options);
   },
   async stop() {
     if (Platform.OS === 'android' && nativeModule) await nativeModule.stop();
   },
   async setPaused(paused: boolean) {
-    if (Platform.OS === 'android' && nativeModule) await nativeModule.setPaused(paused);
+    if (Platform.OS === 'android' && nativeModule)
+      await nativeModule.setPaused(paused);
   },
   async getStatus(): Promise<ForegroundSyncStatus> {
     if (Platform.OS === 'android' && nativeModule)
       return { supported: true, ...(await nativeModule.getStatus()) };
-    return { supported: false, running: false, paused: false, enabledCollections: [], pending: 0, uploaded: 0 };
+    return {
+      supported: false,
+      running: false,
+      paused: false,
+      enabledCollections: [],
+      pending: 0,
+      uploaded: 0,
+    };
   },
   addListener(event: string, listener: (event: unknown) => void) {
     return nativeModule?.addListener(event, listener);

@@ -86,7 +86,10 @@ function storageOf(media: SummaryMedia): {
   backedUpAt: number | null;
 } {
   const transferState = transferOf(media);
-  const cloudAvailable = Boolean(media.storageId && transferState === 'synced');
+  // A storage ID is written only by completeUpload, after the blob is verified.
+  // Treat it as authoritative even if an older duplicate-upload attempt left the
+  // legacy transfer state as `error`.
+  const cloudAvailable = Boolean(media.storageId);
   const localAvailable = Boolean(media.localAssetId && !media.localRemovedAt);
   const safeToRemoveLocal = cloudAvailable && localAvailable;
   const state = cloudAvailable
@@ -968,6 +971,9 @@ export const markSyncError = mutation({
         'Sync error must contain between 1 and 500 characters',
       );
     const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
+    // Another worker may have completed this file between enqueue and the
+    // client's upload-url request. Its storage ID is a verified cloud copy.
+    if (media.storageId) return null;
     const now = Date.now();
     const next = {
       ...media,

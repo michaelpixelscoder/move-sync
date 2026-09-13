@@ -6,18 +6,24 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const apkPath = join(root, 'dist', 'move-sync-preview.apk');
 
-function loadAndroidHome() {
+function loadAndroidEnv() {
   const envFile = join(root, '.env.local');
-  if (!existsSync(envFile)) return process.env.ANDROID_HOME;
+  const values = {
+    ANDROID_HOME: process.env.ANDROID_HOME,
+    ANDROID_PUSH_DEVICE: process.env.ANDROID_PUSH_DEVICE,
+  };
+  if (!existsSync(envFile)) return values;
 
   for (const line of readFileSync(envFile, 'utf8').split(/\r?\n/)) {
     const trimmed = line.trim();
-    const match = trimmed.match(/^ANDROID_HOME=(.*)$/);
-    if (match)
-      return match[1].replace(/\s+#.*$/, '').replace(/^['"]|['"]$/g, '');
+    const match = trimmed.match(/^(ANDROID_HOME|ANDROID_PUSH_DEVICE)=(.*)$/);
+    if (match && !values[match[1]])
+      values[match[1]] = match[2]
+        .replace(/\s+#.*$/, '')
+        .replace(/^['"]|['"]$/g, '');
   }
 
-  return process.env.ANDROID_HOME;
+  return values;
 }
 
 function run(command, args) {
@@ -35,7 +41,8 @@ if (!existsSync(apkPath)) {
   process.exit(1);
 }
 
-const androidHome = loadAndroidHome();
+const { ANDROID_HOME: androidHome, ANDROID_PUSH_DEVICE: androidPushDevice } =
+  loadAndroidEnv();
 const adb = androidHome
   ? join(
       androidHome,
@@ -43,10 +50,12 @@ const adb = androidHome
       process.platform === 'win32' ? 'adb.exe' : 'adb',
     )
   : 'adb';
+const targetArgs = androidPushDevice ? ['-s', androidPushDevice] : [];
 
 run(adb, ['devices']);
-run(adb, ['install', '-r', apkPath]);
+run(adb, [...targetArgs, 'install', '-r', apkPath]);
 run(adb, [
+  ...targetArgs,
   'shell',
   'monkey',
   '-p',
