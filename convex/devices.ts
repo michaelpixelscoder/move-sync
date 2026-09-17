@@ -53,8 +53,9 @@ async function currentInstallation(
   // were persisted. Only the canonical installation can claim it.
   const legacy = await ctx.db
     .query('devices')
-    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
-    .filter((q) => q.eq(q.field('installationKey'), undefined))
+    .withIndex('by_client_key_and_installation_key', (q) =>
+      q.eq('clientKey', clientKey).eq('installationKey', undefined),
+    )
     .first();
   return legacy;
 }

@@ -26,7 +26,7 @@ export default defineSchema({
     .index('by_client_key', ['clientKey'])
     .index('by_user_id', ['userId']),
   collections: defineTable({
-    // Possession of this unguessable key is the authorization boundary.
+    // Legacy partition key. Public functions map an authenticated claim to it.
     clientKey: v.string(),
     localId: v.string(),
     name: v.string(),

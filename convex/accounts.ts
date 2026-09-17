@@ -110,25 +110,11 @@ export const deleteCurrent = mutation({
         ),
       )
     ).flat();
-    const verifiers = sessions.length
-      ? await ctx.db
-          .query('authVerifiers')
-          .filter((q) =>
-            q.or(
-              ...sessions.map((session) =>
-                q.eq(q.field('sessionId'), session._id),
-              ),
-            ),
-          )
-          .take(MAX_ACCOUNT_DOCUMENTS + 1)
-      : [];
-
     const allDocuments = [
       ...domainDocuments,
       ...claims,
       ...refreshTokens,
       ...verificationCodes,
-      ...verifiers,
       ...accounts,
       ...sessions,
     ];
@@ -149,7 +135,6 @@ export const deleteCurrent = mutation({
       ...claims,
       ...refreshTokens,
       ...verificationCodes,
-      ...verifiers,
       ...accounts,
       ...sessions,
     ]) {

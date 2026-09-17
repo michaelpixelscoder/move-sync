@@ -120,6 +120,22 @@ describe('Move Sync backend', () => {
     await expect(
       t.mutation(api.media.remove, { clientKey: otherKey, id }),
     ).rejects.toThrow(/access denied/i);
+    await expect(
+      otherUser.query(api.media.listPage, {
+        clientKey: ownerKey,
+        filter: { kind: 'filename', query: 'private' },
+        paginationOpts: { cursor: null, numItems: 10 },
+      }),
+    ).rejects.toThrow(/access denied/i);
+    await expect(
+      otherUser.query(api.media.summary, { clientKey: ownerKey }),
+    ).rejects.toThrow(/access denied/i);
+    await expect(
+      otherUser.mutation(api.media.removeMany, {
+        clientKey: ownerKey,
+        ids: [id],
+      }),
+    ).rejects.toThrow(/access denied/i);
     expect(
       (await t.query(api.media.list, { clientKey: ownerKey })).map(
         (item) => item._id,
