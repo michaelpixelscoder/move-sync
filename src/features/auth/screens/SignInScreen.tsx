@@ -17,13 +17,15 @@ import { theme, textStyles } from '../../../theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
 
-type Mode = 'signIn' | 'signUp';
+type Mode = 'signIn' | 'signUp' | 'reset' | 'resetVerification';
 
 export function SignInScreen() {
   const { signIn } = useAuthActions();
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<'password' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +34,30 @@ export function SignInScreen() {
     setError(null);
     try {
       await signIn('password', { email: email.trim(), password, flow: mode });
+    } catch (reason) {
+      setError(authErrorMessage(reason));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submitReset = async () => {
+    setBusy('password');
+    setError(null);
+    setNotice(null);
+    try {
+      if (mode === 'reset') {
+        await signIn('password', { email: email.trim(), flow: 'reset' });
+        setMode('resetVerification');
+        setNotice('Check your email for a password reset code.');
+      } else {
+        await signIn('password', {
+          email: email.trim(),
+          code: code.trim(),
+          newPassword: password,
+          flow: 'reset-verification',
+        });
+      }
     } catch (reason) {
       setError(authErrorMessage(reason));
     } finally {
@@ -118,22 +144,40 @@ export function SignInScreen() {
               value={email}
             />
           </View>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              accessibilityLabel="Password"
-              autoCapitalize="none"
-              autoComplete={
-                mode === 'signIn' ? 'current-password' : 'new-password'
-              }
-              onChangeText={setPassword}
-              placeholder="At least 8 characters"
-              placeholderTextColor={theme.color.textTertiary}
-              secureTextEntry
-              style={styles.input}
-              value={password}
-            />
-          </View>
+          {mode === 'resetVerification' ? (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Reset code</Text>
+              <TextInput
+                accessibilityLabel="Reset code"
+                autoCapitalize="none"
+                onChangeText={setCode}
+                placeholder="Code from your email"
+                placeholderTextColor={theme.color.textTertiary}
+                style={styles.input}
+                value={code}
+              />
+            </View>
+          ) : null}
+          {mode !== 'reset' ? (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                accessibilityLabel="Password"
+                autoCapitalize="none"
+                autoComplete={
+                  mode === 'signIn' ? 'current-password' : 'new-password'
+                }
+                onChangeText={setPassword}
+                placeholder="At least 8 characters"
+                placeholderTextColor={theme.color.textTertiary}
+                secureTextEntry
+                style={styles.input}
+                value={password}
+              />
+            </View>
+          ) : null}
+
+          {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
           {error ? (
             <Text accessibilityRole="alert" style={styles.error}>
@@ -142,10 +186,28 @@ export function SignInScreen() {
           ) : null}
 
           <Button
-            label={mode === 'signIn' ? 'Sign in' : 'Create account'}
+            label={
+              mode === 'signIn'
+                ? 'Sign in'
+                : mode === 'signUp'
+                  ? 'Create account'
+                  : mode === 'reset'
+                    ? 'Send reset code'
+                    : 'Set new password'
+            }
             loading={busy === 'password'}
-            disabled={passwordDisabled}
-            onPress={() => void submitPassword()}
+            disabled={
+              mode === 'reset'
+                ? disabled || !email.trim()
+                : mode === 'resetVerification'
+                  ? passwordDisabled || !code.trim()
+                  : passwordDisabled
+            }
+            onPress={() =>
+              void (mode === 'reset' || mode === 'resetVerification'
+                ? submitReset()
+                : submitPassword())
+            }
           />
           <Pressable
             accessibilityRole="button"
@@ -155,6 +217,7 @@ export function SignInScreen() {
                 current === 'signIn' ? 'signUp' : 'signIn',
               );
               setError(null);
+              setNotice(null);
             }}
             style={({ pressed }) => [
               styles.switchMode,
@@ -164,9 +227,26 @@ export function SignInScreen() {
             <Text style={styles.switchModeText}>
               {mode === 'signIn'
                 ? 'New to Move Sync? Create an account'
-                : 'Already have an account? Sign in'}
+                : 'Back to sign in'}
             </Text>
           </Pressable>
+          {mode === 'signIn' ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={() => {
+                setMode('reset');
+                setError(null);
+                setNotice(null);
+              }}
+              style={({ pressed }) => [
+                styles.switchMode,
+                pressed && styles.switchModePressed,
+              ]}
+            >
+              <Text style={styles.switchModeText}>Forgot your password?</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -180,6 +260,10 @@ function authErrorMessage(reason: unknown) {
   if (/already exists|account.*exists/i.test(message)) {
     return 'An account already exists for this email.';
   }
+  if (/recovery is not configured/i.test(message))
+    return 'Password recovery is not available yet. Try Google sign-in or contact support.';
+  if (/invalid code/i.test(message))
+    return 'That reset code is invalid or expired.';
   return 'Authentication failed. Please try again.';
 }
 
@@ -234,6 +318,7 @@ const styles = StyleSheet.create({
     fontSize: theme.type.body.fontSize,
   },
   error: { ...textStyles.meta, color: theme.color.danger },
+  notice: { ...textStyles.meta, color: theme.color.success },
   switchMode: { minHeight: theme.size.touch, justifyContent: 'center' },
   switchModePressed: { opacity: 0.72 },
   switchModeText: {
