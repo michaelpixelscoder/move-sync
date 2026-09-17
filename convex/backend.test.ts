@@ -495,10 +495,25 @@ describe('Move Sync backend', () => {
       clientKey: secondDeviceKey,
     });
 
+    const firstDevice = await t.mutation(api.devices.upsertCurrent, {
+      clientKey: ownerKey,
+      name: 'First phone',
+      platform: 'ios',
+    });
+    const secondDevice = await t.mutation(api.devices.upsertCurrent, {
+      clientKey: secondDeviceKey,
+      name: 'Second phone',
+      platform: 'android',
+    });
+
     expect(
       (await t.query(api.media.list, { clientKey: secondDeviceKey })).map(
         (item) => item._id,
       ),
     ).toContain(id);
+    expect(secondDevice._id).not.toBe(firstDevice._id);
+    expect(
+      (await t.query(api.devices.current, { clientKey: secondDeviceKey }))?._id,
+    ).toBe(secondDevice._id);
   });
 });

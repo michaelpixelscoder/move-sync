@@ -1,4 +1,5 @@
 import { ConvexError, v } from 'convex/values';
+import type { QueryCtx } from './_generated/server';
 import {
   libraryMutation as mutation,
   libraryQuery as query,
@@ -35,7 +36,30 @@ function view(device: {
   };
 }
 
-/** One per client capability key. This is not cross-device account identity. */
+async function currentInstallation(
+  ctx: QueryCtx,
+  clientKey: string,
+  installationKey: string,
+) {
+  const device = await ctx.db
+    .query('devices')
+    .withIndex('by_client_key_and_installation_key', (q) =>
+      q.eq('clientKey', clientKey).eq('installationKey', installationKey),
+    )
+    .unique();
+  if (device || clientKey !== installationKey) return device;
+
+  // Adopt the single-device record created before installation identities
+  // were persisted. Only the canonical installation can claim it.
+  const legacy = await ctx.db
+    .query('devices')
+    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
+    .filter((q) => q.eq(q.field('installationKey'), undefined))
+    .first();
+  return legacy;
+}
+
+/** One device record per signed-in installation within the account library. */
 export const upsertCurrent = mutation({
   args: { clientKey: v.string(), name: v.string(), platform: v.string() },
   returns: deviceValidator,
@@ -43,13 +67,16 @@ export const upsertCurrent = mutation({
     assertClientKey(args.clientKey);
     assertNonEmpty(args.name, 'device name');
     assertNonEmpty(args.platform, 'platform');
-    const existing = await ctx.db
-      .query('devices')
-      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
-      .unique();
+    const installationKey = ctx.libraryClaim.clientKey;
+    const existing = await currentInstallation(
+      ctx,
+      args.clientKey,
+      installationKey,
+    );
     const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
+        installationKey,
         name: args.name.trim(),
         platform: args.platform.trim(),
         lastSeenAt: now,
@@ -63,6 +90,7 @@ export const upsertCurrent = mutation({
     }
     const id = await ctx.db.insert('devices', {
       clientKey: args.clientKey,
+      installationKey,
       name: args.name.trim(),
       platform: args.platform.trim(),
       firstSeenAt: now,
@@ -79,10 +107,11 @@ export const current = query({
   returns: v.union(deviceValidator, v.null()),
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
-    const device = await ctx.db
-      .query('devices')
-      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
-      .unique();
+    const device = await currentInstallation(
+      ctx,
+      args.clientKey,
+      ctx.libraryClaim.clientKey,
+    );
     return device ? view(device) : null;
   },
 });

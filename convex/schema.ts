@@ -67,12 +67,18 @@ export default defineSchema({
 
   devices: defineTable({
     clientKey: v.string(),
+    installationKey: v.optional(v.string()),
     name: v.string(),
     platform: v.string(),
     firstSeenAt: v.number(),
     lastSeenAt: v.number(),
     lastBackupAt: v.optional(v.number()),
-  }).index('by_client_key', ['clientKey']),
+  })
+    .index('by_client_key', ['clientKey'])
+    .index('by_client_key_and_installation_key', [
+      'clientKey',
+      'installationKey',
+    ]),
 
   media: defineTable({
     clientKey: v.string(),

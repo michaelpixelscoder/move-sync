@@ -301,10 +301,16 @@ async function requireOwnedCollection(
     throw new ConvexError('Collection not found');
   return collection;
 }
-async function currentDevice(ctx: MutationCtx, clientKey: string) {
+async function currentDevice(
+  ctx: MutationCtx,
+  clientKey: string,
+  installationKey: string,
+) {
   return await ctx.db
     .query('devices')
-    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
+    .withIndex('by_client_key_and_installation_key', (q) =>
+      q.eq('clientKey', clientKey).eq('installationKey', installationKey),
+    )
     .unique();
 }
 
@@ -718,7 +724,11 @@ export const enqueue = mutation({
       : null;
     if (existing && storageOf(existing).cloudAvailable) return existing._id;
     const now = Date.now();
-    const device = await currentDevice(ctx, args.clientKey);
+    const device = await currentDevice(
+      ctx,
+      args.clientKey,
+      ctx.libraryClaim.clientKey,
+    );
     const values = {
       collectionRef: args.collectionId,
       sourceCollectionLocalId: args.sourceCollectionLocalId,
@@ -877,7 +887,11 @@ export const completeUpload = mutation({
             .unique()
         : null;
     const now = Date.now();
-    const device = await currentDevice(ctx, args.clientKey);
+    const device = await currentDevice(
+      ctx,
+      args.clientKey,
+      ctx.libraryClaim.clientKey,
+    );
     const values = {
       collectionRef: args.collectionId,
       sourceCollectionLocalId: args.sourceCollectionLocalId,
