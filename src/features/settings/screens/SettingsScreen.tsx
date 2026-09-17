@@ -7,8 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthActions } from '@convex-dev/auth/react';
-import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
 import { useState } from 'react';
 import { api } from '../../../../convex/_generated/api';
 import { theme, textStyles } from '../../../theme/tokens';
@@ -20,20 +19,21 @@ import {
   SectionHeader,
 } from '../../../components/layout/PagePrimitives';
 import { Button } from '../../../components/ui/Button';
-import { clearClientKey } from '../../../lib/session';
 
-export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
-  const { signOut } = useAuthActions();
+export function SettingsScreen({
+  onDeleteAccount,
+  onOpenBackup,
+  onSignOut,
+}: {
+  onDeleteAccount: () => Promise<void>;
+  onOpenBackup: () => void;
+  onSignOut: () => Promise<void>;
+}) {
   const viewer = useQuery(api.viewer.current);
   const revokeOtherSessions = useAction(api.accounts.revokeOtherSessions);
-  const deleteAccount = useMutation(api.accounts.deleteCurrent);
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
-  const signOutAndRotateInstallation = async () => {
-    await signOut();
-    await clearClientKey();
-  };
   return (
     <View style={styles.screen}>
       <PageHeader title={productCopy.settings.heading} />
@@ -88,7 +88,7 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                 label="Sign out"
                 icon="log-out-outline"
                 tone="secondary"
-                onPress={() => void signOutAndRotateInstallation()}
+                onPress={() => void onSignOut()}
               />
               <Button
                 label="Sign out other devices"
@@ -136,14 +136,12 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                         onPress: () => {
                           setDeleting(true);
                           setSessionMessage(null);
-                          void deleteAccount({ confirmation: 'DELETE' })
-                            .then(() => signOutAndRotateInstallation())
-                            .catch(() => {
-                              setSessionMessage(
-                                'Account deletion failed. No data was deleted. Try again.',
-                              );
-                              setDeleting(false);
-                            });
+                          void onDeleteAccount().catch(() => {
+                            setSessionMessage(
+                              'Account deletion failed. No data was deleted. Try again.',
+                            );
+                            setDeleting(false);
+                          });
                         },
                       },
                     ],

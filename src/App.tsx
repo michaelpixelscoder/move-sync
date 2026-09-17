@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useConvexAuth } from '@convex-dev/auth/react';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppProviders } from './providers/AppProviders';
@@ -18,6 +21,7 @@ import { SettingsScreen } from './features/settings/screens/SettingsScreen';
 import { theme } from './theme/tokens';
 import { SignInScreen } from './features/auth/screens/SignInScreen';
 import { useLibraryClaim } from './hooks/useLibraryClaim';
+import { clearClientKey } from './lib/session';
 
 export default function App() {
   return (
@@ -29,6 +33,37 @@ export default function App() {
 
 function MoveSync() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const viewer = useQuery(api.viewer.current);
+  const deleteAccount = useMutation(api.accounts.deleteCurrent);
+  const [endingSession, setEndingSession] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && viewer === null) void signOut();
+  }, [isAuthenticated, isLoading, signOut, viewer]);
+
+  const beforeSessionInvalidation = async () => {
+    setEndingSession(true);
+    await clearClientKey();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  };
+
+  const endSession = async () => {
+    await beforeSessionInvalidation();
+    await signOut();
+  };
+
+  const deleteCurrentAccount = async () => {
+    await beforeSessionInvalidation();
+    try {
+      await deleteAccount({ confirmation: 'DELETE' });
+      await signOut();
+    } catch (error) {
+      setEndingSession(false);
+      throw error;
+    }
+  };
+
   if (isLoading)
     return (
       <SafeAreaView style={styles.safe}>
@@ -36,10 +71,29 @@ function MoveSync() {
       </SafeAreaView>
     );
   if (!isAuthenticated) return <SignInScreen />;
-  return <AuthenticatedApp />;
+  if (viewer === undefined || viewer === null || endingSession)
+    return (
+      <SafeAreaView style={styles.safe}>
+        <LoadingState
+          label={endingSession ? 'Securing this device…' : 'Verifying session…'}
+        />
+      </SafeAreaView>
+    );
+  return (
+    <AuthenticatedApp
+      onDeleteAccount={deleteCurrentAccount}
+      onSignOut={endSession}
+    />
+  );
 }
 
-function AuthenticatedApp() {
+function AuthenticatedApp({
+  onDeleteAccount,
+  onSignOut,
+}: {
+  onDeleteAccount: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
   const [screen, setScreen] = useState<Screen>({ name: 'videos' });
   const [navigationOpen, setNavigationOpen] = useState(false);
   const { clientKey, error } = useClientKey();
@@ -109,7 +163,11 @@ function AuthenticatedApp() {
     ) : screen.name === 'backup' ? (
       <BackupScreen clientKey={clientKey} />
     ) : screen.name === 'settings' ? (
-      <SettingsScreen onOpenBackup={() => navigate({ name: 'backup' })} />
+      <SettingsScreen
+        onDeleteAccount={onDeleteAccount}
+        onOpenBackup={() => navigate({ name: 'backup' })}
+        onSignOut={onSignOut}
+      />
     ) : (
       <PlayerScreen
         clientKey={clientKey}
