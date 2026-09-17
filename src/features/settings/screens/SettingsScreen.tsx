@@ -1,7 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useQuery } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
+import { useState } from 'react';
 import { api } from '../../../../convex/_generated/api';
 import { theme, textStyles } from '../../../theme/tokens';
 import { productCopy } from '../../../content/productCopy';
@@ -16,6 +17,9 @@ import { Button } from '../../../components/ui/Button';
 export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
   const { signOut } = useAuthActions();
   const viewer = useQuery(api.viewer.current);
+  const revokeOtherSessions = useAction(api.accounts.revokeOtherSessions);
+  const [revoking, setRevoking] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null);
   return (
     <View style={styles.screen}>
       <PageHeader title={productCopy.settings.heading} />
@@ -72,6 +76,34 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                 tone="secondary"
                 onPress={() => void signOut()}
               />
+              <Button
+                label="Sign out other devices"
+                icon="phone-portrait-outline"
+                tone="secondary"
+                loading={revoking}
+                disabled={revoking}
+                onPress={() => {
+                  setRevoking(true);
+                  setSessionMessage(null);
+                  void revokeOtherSessions()
+                    .then(() =>
+                      setSessionMessage(
+                        'Other device sessions were signed out.',
+                      ),
+                    )
+                    .catch(() =>
+                      setSessionMessage(
+                        'Unable to sign out other devices. Try again.',
+                      ),
+                    )
+                    .finally(() => setRevoking(false));
+                }}
+              />
+              {sessionMessage ? (
+                <Text accessibilityRole="alert" style={styles.meta}>
+                  {sessionMessage}
+                </Text>
+              ) : null}
             </View>
           </DetailPanel>
           <SectionHeader title="Device" />

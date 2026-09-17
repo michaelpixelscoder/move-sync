@@ -479,6 +479,9 @@ describe('Move Sync backend', () => {
         name: 'Unauthorized',
       }),
     ).rejects.toThrow(/authentication required/i);
+    await expect(
+      unauthenticated.action(api.accounts.revokeOtherSessions),
+    ).rejects.toThrow(/authentication required/i);
   });
 
   it('routes a second device claim to the same account library', async () => {
