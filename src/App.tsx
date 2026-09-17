@@ -17,6 +17,7 @@ import { PlayerScreen } from './features/player/screens/PlayerScreen';
 import { SettingsScreen } from './features/settings/screens/SettingsScreen';
 import { theme } from './theme/tokens';
 import { SignInScreen } from './features/auth/screens/SignInScreen';
+import { useLibraryClaim } from './hooks/useLibraryClaim';
 
 export default function App() {
   return (
@@ -31,9 +32,11 @@ function MoveSync() {
   const [screen, setScreen] = useState<Screen>({ name: 'videos' });
   const [navigationOpen, setNavigationOpen] = useState(false);
   const { clientKey, error } = useClientKey();
-  useDevicePresence(isAuthenticated ? clientKey : undefined);
-  useLibrarySummaryRebuild(isAuthenticated ? clientKey : undefined);
-  useAutoSync(isAuthenticated ? clientKey : undefined);
+  const claim = useLibraryClaim(isAuthenticated ? clientKey : undefined);
+  const claimedClientKey = claim.status === 'claimed' ? clientKey : undefined;
+  useDevicePresence(claimedClientKey);
+  useLibrarySummaryRebuild(claimedClientKey);
+  useAutoSync(claimedClientKey);
   useEffect(() => {
     if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
   }, [screen.name]);
@@ -44,16 +47,28 @@ function MoveSync() {
       </SafeAreaView>
     );
   if (!isAuthenticated) return <SignInScreen />;
+  if (claim.status === 'error')
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ErrorState message={claim.error} />
+      </SafeAreaView>
+    );
   if (error)
     return (
       <SafeAreaView style={styles.safe}>
         <ErrorState message={error} />
       </SafeAreaView>
     );
-  if (!clientKey)
+  if (!clientKey || claim.status !== 'claimed')
     return (
       <SafeAreaView style={styles.safe}>
-        <LoadingState label="Preparing secure device storage…" />
+        <LoadingState
+          label={
+            clientKey
+              ? 'Linking your library to your account…'
+              : 'Preparing secure device storage…'
+          }
+        />
       </SafeAreaView>
     );
   const navigate = (next: Screen) => {

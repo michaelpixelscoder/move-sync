@@ -17,6 +17,13 @@ const activityState = v.union(
 
 export default defineSchema({
   ...authTables,
+  libraryClaims: defineTable({
+    clientKey: v.string(),
+    userId: v.id('users'),
+    claimedAt: v.number(),
+  })
+    .index('by_client_key', ['clientKey'])
+    .index('by_user_id', ['userId']),
   collections: defineTable({
     // Possession of this unguessable key is the authorization boundary.
     clientKey: v.string(),

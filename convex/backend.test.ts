@@ -23,6 +23,39 @@ describe('Move Sync backend', () => {
     );
   }
 
+  it('allows one authenticated user to claim a library exactly once', async () => {
+    const [firstUserId, secondUserId] = await t.run(async (ctx) => [
+      await ctx.db.insert('users', { email: 'first@example.test' }),
+      await ctx.db.insert('users', { email: 'second@example.test' }),
+    ]);
+    const firstUser = t.withIdentity({ subject: firstUserId });
+    const secondUser = t.withIdentity({ subject: secondUserId });
+
+    const firstClaim = await firstUser.mutation(api.libraries.claimCurrent, {
+      clientKey: ownerKey,
+    });
+    const retry = await firstUser.mutation(api.libraries.claimCurrent, {
+      clientKey: ownerKey,
+    });
+
+    expect(retry).toEqual(firstClaim);
+    expect(
+      await firstUser.query(api.libraries.currentClaim, {
+        clientKey: ownerKey,
+      }),
+    ).toEqual(firstClaim);
+    await expect(
+      secondUser.mutation(api.libraries.claimCurrent, {
+        clientKey: ownerKey,
+      }),
+    ).rejects.toThrow(/another account/i);
+    expect(
+      await secondUser.query(api.libraries.currentClaim, {
+        clientKey: ownerKey,
+      }),
+    ).toBeNull();
+  });
+
   it('drives a media item through queued to synced with authoritative storage metadata', async () => {
     const metadata = {
       clientKey: ownerKey,

@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as collections from "../collections.js";
 import type * as devices from "../devices.js";
 import type * as http from "../http.js";
+import type * as libraries from "../libraries.js";
 import type * as media from "../media.js";
 import type * as playlists from "../playlists.js";
 import type * as shared from "../shared.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   collections: typeof collections;
   devices: typeof devices;
   http: typeof http;
+  libraries: typeof libraries;
   media: typeof media;
   playlists: typeof playlists;
   shared: typeof shared;
