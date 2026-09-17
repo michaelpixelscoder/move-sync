@@ -61,6 +61,7 @@ export default defineSchema({
     mediaId: v.id('media'),
     addedAt: v.number(),
   })
+    .index('by_client_key', ['clientKey'])
     .index('by_playlist', ['playlistId'])
     .index('by_playlist_and_media', ['playlistId', 'mediaId'])
     .index('by_media', ['mediaId']),

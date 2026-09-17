@@ -519,4 +519,48 @@ describe('Move Sync backend', () => {
       (await t.query(api.devices.current, { clientKey: secondDeviceKey }))?._id,
     ).toBe(secondDevice._id);
   });
+
+  it('atomically deletes an account library without touching another user', async () => {
+    const storageId = await storedVideo();
+    await t.run(async (ctx) => {
+      await ctx.db.insert('media', {
+        clientKey: ownerKey,
+        filename: 'delete-me.mp4',
+        mimeType: 'video/mp4',
+        sizeBytes: 16,
+        createdAt: 1,
+        durationMs: 1,
+        state: 'synced',
+        transferState: 'synced',
+        storageId,
+        updatedAt: 1,
+      });
+    });
+    await otherUser.mutation(api.playlists.create, {
+      clientKey: otherKey,
+      name: 'Keep me',
+    });
+
+    await t.mutation(api.accounts.deleteCurrent, { confirmation: 'DELETE' });
+
+    const remaining = await unauthenticated.run(async (ctx) => ({
+      ownerClaims: await ctx.db
+        .query('libraryClaims')
+        .filter((q) => q.eq(q.field('clientKey'), ownerKey))
+        .collect(),
+      ownerMedia: await ctx.db
+        .query('media')
+        .filter((q) => q.eq(q.field('clientKey'), ownerKey))
+        .collect(),
+      otherPlaylists: await ctx.db
+        .query('playlists')
+        .filter((q) => q.eq(q.field('clientKey'), otherKey))
+        .collect(),
+      stored: await ctx.storage.get(storageId),
+    }));
+    expect(remaining.ownerClaims).toEqual([]);
+    expect(remaining.ownerMedia).toEqual([]);
+    expect(remaining.otherPlaylists).toHaveLength(1);
+    expect(remaining.stored).toBeNull();
+  });
 });

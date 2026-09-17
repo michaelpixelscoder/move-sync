@@ -1,7 +1,14 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useAction, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { useState } from 'react';
 import { api } from '../../../../convex/_generated/api';
 import { theme, textStyles } from '../../../theme/tokens';
@@ -18,7 +25,9 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
   const { signOut } = useAuthActions();
   const viewer = useQuery(api.viewer.current);
   const revokeOtherSessions = useAction(api.accounts.revokeOtherSessions);
+  const deleteAccount = useMutation(api.accounts.deleteCurrent);
   const [revoking, setRevoking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
   return (
     <View style={styles.screen}>
@@ -104,6 +113,38 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                   {sessionMessage}
                 </Text>
               ) : null}
+              <Button
+                label="Delete account and cloud library"
+                icon="trash-outline"
+                tone="danger"
+                loading={deleting}
+                disabled={deleting}
+                onPress={() =>
+                  Alert.alert(
+                    'Delete your account?',
+                    'This permanently deletes your cloud videos, playlists, and account. Videos stored on your devices are not removed.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete permanently',
+                        style: 'destructive',
+                        onPress: () => {
+                          setDeleting(true);
+                          setSessionMessage(null);
+                          void deleteAccount({ confirmation: 'DELETE' })
+                            .then(() => signOut())
+                            .catch(() => {
+                              setSessionMessage(
+                                'Account deletion failed. No data was deleted. Try again.',
+                              );
+                              setDeleting(false);
+                            });
+                        },
+                      },
+                    ],
+                  )
+                }
+              />
             </View>
           </DetailPanel>
           <SectionHeader title="Device" />
