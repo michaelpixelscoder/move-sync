@@ -2,6 +2,7 @@
   "expo": {
     "name": "Move Sync",
     "slug": "move-sync",
+    "scheme": "move-sync",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/move-sync-icon-v2.png",

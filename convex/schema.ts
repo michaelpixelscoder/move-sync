@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import { authTables } from '@convex-dev/auth/server';
 
 const transferState = v.union(
   v.literal('queued'),
@@ -15,6 +16,7 @@ const activityState = v.union(
 );
 
 export default defineSchema({
+  ...authTables,
   collections: defineTable({
     // Possession of this unguessable key is the authorization boundary.
     clientKey: v.string(),

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useConvexAuth } from '@convex-dev/auth/react';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppProviders } from './providers/AppProviders';
@@ -15,6 +16,7 @@ import { PlaylistsScreen } from './features/playlists/screens/PlaylistsScreen';
 import { PlayerScreen } from './features/player/screens/PlayerScreen';
 import { SettingsScreen } from './features/settings/screens/SettingsScreen';
 import { theme } from './theme/tokens';
+import { SignInScreen } from './features/auth/screens/SignInScreen';
 
 export default function App() {
   return (
@@ -25,15 +27,23 @@ export default function App() {
 }
 
 function MoveSync() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const [screen, setScreen] = useState<Screen>({ name: 'videos' });
   const [navigationOpen, setNavigationOpen] = useState(false);
   const { clientKey, error } = useClientKey();
-  useDevicePresence(clientKey);
-  useLibrarySummaryRebuild(clientKey);
-  useAutoSync(clientKey);
+  useDevicePresence(isAuthenticated ? clientKey : undefined);
+  useLibrarySummaryRebuild(isAuthenticated ? clientKey : undefined);
+  useAutoSync(isAuthenticated ? clientKey : undefined);
   useEffect(() => {
     if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
   }, [screen.name]);
+  if (isLoading)
+    return (
+      <SafeAreaView style={styles.safe}>
+        <LoadingState label="Restoring your session…" />
+      </SafeAreaView>
+    );
+  if (!isAuthenticated) return <SignInScreen />;
   if (error)
     return (
       <SafeAreaView style={styles.safe}>

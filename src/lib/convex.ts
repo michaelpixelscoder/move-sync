@@ -4,4 +4,6 @@ if (!convexUrl)
   throw new Error(
     'EXPO_PUBLIC_CONVEX_URL is missing. Run `npx convex dev --once`.',
   );
-export const convex = new ConvexReactClient(convexUrl);
+export const convex = new ConvexReactClient(convexUrl, {
+  unsavedChangesWarning: false,
+});

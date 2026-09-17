@@ -1,5 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { theme, textStyles } from '../../../theme/tokens';
 import { productCopy } from '../../../content/productCopy';
 import {
@@ -8,8 +11,11 @@ import {
   PageHeader,
   SectionHeader,
 } from '../../../components/layout/PagePrimitives';
+import { Button } from '../../../components/ui/Button';
 
 export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
+  const { signOut } = useAuthActions();
+  const viewer = useQuery(api.viewer.current);
   return (
     <View style={styles.screen}>
       <PageHeader title={productCopy.settings.heading} />
@@ -44,6 +50,29 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                 color={theme.color.textSecondary}
               />
             </Pressable>
+          </DetailPanel>
+          <SectionHeader title="Account" />
+          <DetailPanel>
+            <View style={styles.accountActions}>
+              <View style={styles.accountIdentity}>
+                <Text style={styles.title}>
+                  {viewer?.name ?? 'Move Sync account'}
+                </Text>
+                {viewer?.email ? (
+                  <Text style={styles.meta}>{viewer.email}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.meta}>
+                Signing out keeps your cloud library and removes this session
+                from the device.
+              </Text>
+              <Button
+                label="Sign out"
+                icon="log-out-outline"
+                tone="secondary"
+                onPress={() => void signOut()}
+              />
+            </View>
           </DetailPanel>
           <SectionHeader title="Device" />
           <DetailPanel>
@@ -94,4 +123,6 @@ const styles = StyleSheet.create({
   title: textStyles.cardTitle,
   meta: textStyles.meta,
   pressed: { backgroundColor: theme.color.surfacePressed },
+  accountActions: { gap: theme.space.md, padding: theme.space.md },
+  accountIdentity: { gap: theme.space.xxs },
 });

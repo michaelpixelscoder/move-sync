@@ -9,11 +9,14 @@
  */
 
 import type * as activity from "../activity.js";
+import type * as auth from "../auth.js";
 import type * as collections from "../collections.js";
 import type * as devices from "../devices.js";
+import type * as http from "../http.js";
 import type * as media from "../media.js";
 import type * as playlists from "../playlists.js";
 import type * as shared from "../shared.js";
+import type * as viewer from "../viewer.js";
 
 import type {
   ApiFromModules,
@@ -23,11 +26,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
+  auth: typeof auth;
   collections: typeof collections;
   devices: typeof devices;
+  http: typeof http;
   media: typeof media;
   playlists: typeof playlists;
   shared: typeof shared;
+  viewer: typeof viewer;
 }>;
 
 /**
