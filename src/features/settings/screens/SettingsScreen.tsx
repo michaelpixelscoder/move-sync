@@ -20,6 +20,7 @@ import {
   SectionHeader,
 } from '../../../components/layout/PagePrimitives';
 import { Button } from '../../../components/ui/Button';
+import { clearClientKey } from '../../../lib/session';
 
 export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
   const { signOut } = useAuthActions();
@@ -29,6 +30,10 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+  const signOutAndRotateInstallation = async () => {
+    await signOut();
+    await clearClientKey();
+  };
   return (
     <View style={styles.screen}>
       <PageHeader title={productCopy.settings.heading} />
@@ -83,7 +88,7 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                 label="Sign out"
                 icon="log-out-outline"
                 tone="secondary"
-                onPress={() => void signOut()}
+                onPress={() => void signOutAndRotateInstallation()}
               />
               <Button
                 label="Sign out other devices"
@@ -132,7 +137,7 @@ export function SettingsScreen({ onOpenBackup }: { onOpenBackup: () => void }) {
                           setDeleting(true);
                           setSessionMessage(null);
                           void deleteAccount({ confirmation: 'DELETE' })
-                            .then(() => signOut())
+                            .then(() => signOutAndRotateInstallation())
                             .catch(() => {
                               setSessionMessage(
                                 'Account deletion failed. No data was deleted. Try again.',

@@ -29,17 +29,6 @@ export default function App() {
 
 function MoveSync() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const [screen, setScreen] = useState<Screen>({ name: 'videos' });
-  const [navigationOpen, setNavigationOpen] = useState(false);
-  const { clientKey, error } = useClientKey();
-  const claim = useLibraryClaim(isAuthenticated ? clientKey : undefined);
-  const claimedClientKey = claim.status === 'claimed' ? clientKey : undefined;
-  useDevicePresence(claimedClientKey);
-  useLibrarySummaryRebuild(claimedClientKey);
-  useAutoSync(claimedClientKey);
-  useEffect(() => {
-    if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
-  }, [screen.name]);
   if (isLoading)
     return (
       <SafeAreaView style={styles.safe}>
@@ -47,6 +36,21 @@ function MoveSync() {
       </SafeAreaView>
     );
   if (!isAuthenticated) return <SignInScreen />;
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
+  const [screen, setScreen] = useState<Screen>({ name: 'videos' });
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const { clientKey, error } = useClientKey();
+  const claim = useLibraryClaim(clientKey);
+  const claimedClientKey = claim.status === 'claimed' ? clientKey : undefined;
+  useDevicePresence(claimedClientKey);
+  useLibrarySummaryRebuild(claimedClientKey);
+  useAutoSync(claimedClientKey);
+  useEffect(() => {
+    if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
+  }, [screen.name]);
   if (claim.status === 'error')
     return (
       <SafeAreaView style={styles.safe}>

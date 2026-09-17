@@ -10,3 +10,8 @@ export async function getClientKey() {
   await AsyncStorage.setItem(CLIENT_KEY_STORAGE, key);
   return key;
 }
+
+export async function clearClientKey() {
+  if (__DEV__ && process.env.EXPO_PUBLIC_E2E_CLIENT_KEY) return;
+  await AsyncStorage.removeItem(CLIENT_KEY_STORAGE);
+}
