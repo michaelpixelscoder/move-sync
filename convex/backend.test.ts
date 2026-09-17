@@ -7,11 +7,26 @@ import { api } from './_generated/api';
 const modules = import.meta.glob('./**/*.ts');
 const ownerKey = 'owner-8e60fc22-3f3d-4e42-a647-fcb72cb58811';
 const otherKey = 'other-a875191d-345f-47f1-ad72-bb84072a0231';
+type TestBackend = ReturnType<typeof convexTest>;
+type AuthenticatedTestBackend = ReturnType<TestBackend['withIdentity']>;
 
 describe('Move Sync backend', () => {
-  let t: ReturnType<typeof convexTest>;
-  beforeEach(() => {
-    t = convexTest(schema, modules);
+  let t: AuthenticatedTestBackend;
+  let unauthenticated: TestBackend;
+  let otherUser: AuthenticatedTestBackend;
+  beforeEach(async () => {
+    const base = convexTest(schema, modules);
+    unauthenticated = base;
+    const [ownerUserId, otherUserId] = await base.run(async (ctx) => [
+      await ctx.db.insert('users', { email: 'owner@example.test' }),
+      await ctx.db.insert('users', { email: 'other@example.test' }),
+    ]);
+    t = base.withIdentity({ subject: ownerUserId });
+    otherUser = base.withIdentity({ subject: otherUserId });
+    await t.mutation(api.libraries.claimCurrent, { clientKey: ownerKey });
+    await otherUser.mutation(api.libraries.claimCurrent, {
+      clientKey: otherKey,
+    });
   });
 
   async function storedVideo() {
@@ -24,34 +39,35 @@ describe('Move Sync backend', () => {
   }
 
   it('allows one authenticated user to claim a library exactly once', async () => {
+    const claimKey = 'claim-cf88603d-d39b-4f56-aa02-e7d4d8afc96d';
     const [firstUserId, secondUserId] = await t.run(async (ctx) => [
       await ctx.db.insert('users', { email: 'first@example.test' }),
       await ctx.db.insert('users', { email: 'second@example.test' }),
     ]);
-    const firstUser = t.withIdentity({ subject: firstUserId });
-    const secondUser = t.withIdentity({ subject: secondUserId });
+    const firstUser = unauthenticated.withIdentity({ subject: firstUserId });
+    const secondUser = unauthenticated.withIdentity({ subject: secondUserId });
 
     const firstClaim = await firstUser.mutation(api.libraries.claimCurrent, {
-      clientKey: ownerKey,
+      clientKey: claimKey,
     });
     const retry = await firstUser.mutation(api.libraries.claimCurrent, {
-      clientKey: ownerKey,
+      clientKey: claimKey,
     });
 
     expect(retry).toEqual(firstClaim);
     expect(
       await firstUser.query(api.libraries.currentClaim, {
-        clientKey: ownerKey,
+        clientKey: claimKey,
       }),
     ).toEqual(firstClaim);
     await expect(
       secondUser.mutation(api.libraries.claimCurrent, {
-        clientKey: ownerKey,
+        clientKey: claimKey,
       }),
     ).rejects.toThrow(/another account/i);
     expect(
       await secondUser.query(api.libraries.currentClaim, {
-        clientKey: ownerKey,
+        clientKey: claimKey,
       }),
     ).toBeNull();
   });
@@ -95,13 +111,15 @@ describe('Move Sync backend', () => {
       durationMs: 1000,
       createdAt: 100,
     });
-    expect(await t.query(api.media.list, { clientKey: otherKey })).toEqual([]);
+    await expect(
+      t.query(api.media.list, { clientKey: otherKey }),
+    ).rejects.toThrow(/access denied/i);
     await expect(
       t.query(api.media.getById, { clientKey: otherKey, id }),
-    ).rejects.toThrow(/not found/i);
+    ).rejects.toThrow(/access denied/i);
     await expect(
       t.mutation(api.media.remove, { clientKey: otherKey, id }),
-    ).rejects.toThrow(/not found/i);
+    ).rejects.toThrow(/access denied/i);
     expect(
       (await t.query(api.media.list, { clientKey: ownerKey })).map(
         (item) => item._id,
@@ -134,7 +152,7 @@ describe('Move Sync backend', () => {
         collectionId: camera._id,
         enabled: false,
       }),
-    ).rejects.toThrow(/not found/i);
+    ).rejects.toThrow(/access denied/i);
     expect(
       (await t.query(api.collections.listEnabled, { clientKey: ownerKey }))[0]
         .name,
@@ -353,9 +371,9 @@ describe('Move Sync backend', () => {
     expect(
       (await t.query(api.devices.current, { clientKey: ownerKey }))?._id,
     ).toBe(device._id);
-    expect(
-      await t.query(api.devices.current, { clientKey: otherKey }),
-    ).toBeNull();
+    await expect(
+      t.query(api.devices.current, { clientKey: otherKey }),
+    ).rejects.toThrow(/access denied/i);
   });
 
   it('keeps playlists separate from device collections and supports many-to-many video membership', async () => {
@@ -448,6 +466,18 @@ describe('Move Sync backend', () => {
         playlistId: rehearsal._id,
         mediaIds: [first],
       }),
-    ).rejects.toThrow(/not found/i);
+    ).rejects.toThrow(/access denied/i);
+  });
+
+  it('rejects unauthenticated private library access', async () => {
+    await expect(
+      unauthenticated.query(api.media.list, { clientKey: ownerKey }),
+    ).rejects.toThrow(/authentication required/i);
+    await expect(
+      unauthenticated.mutation(api.playlists.create, {
+        clientKey: ownerKey,
+        name: 'Unauthorized',
+      }),
+    ).rejects.toThrow(/authentication required/i);
   });
 });

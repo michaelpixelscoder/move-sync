@@ -1,6 +1,6 @@
 import { paginationOptsValidator } from 'convex/server';
 import { v } from 'convex/values';
-import { query } from './_generated/server';
+import { libraryQuery as query } from './authorizedFunctions';
 import {
   activityStateValidator,
   assertClientKey,

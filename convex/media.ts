@@ -2,7 +2,10 @@ import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
-import { mutation, query } from './_generated/server';
+import {
+  libraryMutation as mutation,
+  libraryQuery as query,
+} from './authorizedFunctions';
 import {
   assertClientKey,
   assertFiniteNonNegative,

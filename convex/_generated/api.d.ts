@@ -10,6 +10,7 @@
 
 import type * as activity from "../activity.js";
 import type * as auth from "../auth.js";
+import type * as authorizedFunctions from "../authorizedFunctions.js";
 import type * as collections from "../collections.js";
 import type * as devices from "../devices.js";
 import type * as http from "../http.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   auth: typeof auth;
+  authorizedFunctions: typeof authorizedFunctions;
   collections: typeof collections;
   devices: typeof devices;
   http: typeof http;

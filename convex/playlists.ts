@@ -1,6 +1,9 @@
 import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import {
+  libraryMutation as mutation,
+  libraryQuery as query,
+} from './authorizedFunctions';
 import {
   assertClientKey,
   assertNonEmpty,
