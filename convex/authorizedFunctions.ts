@@ -25,7 +25,7 @@ const libraryAuthorization = {
 
     return {
       ctx: { userId, libraryClaim: claim },
-      args: { clientKey: args.clientKey },
+      args: { clientKey: claim.libraryKey ?? claim.clientKey },
     };
   },
 };

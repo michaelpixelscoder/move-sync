@@ -25,13 +25,23 @@ export const claimCurrent = mutation({
       if (existing.userId !== userId) {
         throw new ConvexError('This library belongs to another account');
       }
+      if (!existing.libraryKey) {
+        await ctx.db.patch(existing._id, { libraryKey: existing.clientKey });
+      }
       return { _id: existing._id, claimedAt: existing.claimedAt };
     }
 
+    const [firstClaim] = await ctx.db
+      .query('libraryClaims')
+      .withIndex('by_user_id', (q) => q.eq('userId', userId))
+      .take(1);
+    const libraryKey =
+      firstClaim?.libraryKey ?? firstClaim?.clientKey ?? args.clientKey;
     const claimedAt = Date.now();
     const id = await ctx.db.insert('libraryClaims', {
       clientKey: args.clientKey,
       userId,
+      libraryKey,
       claimedAt,
     });
     return { _id: id, claimedAt };

@@ -20,6 +20,7 @@ export default defineSchema({
   libraryClaims: defineTable({
     clientKey: v.string(),
     userId: v.id('users'),
+    libraryKey: v.optional(v.string()),
     claimedAt: v.number(),
   })
     .index('by_client_key', ['clientKey'])

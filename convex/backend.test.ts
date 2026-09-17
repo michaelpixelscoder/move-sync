@@ -480,4 +480,25 @@ describe('Move Sync backend', () => {
       }),
     ).rejects.toThrow(/authentication required/i);
   });
+
+  it('routes a second device claim to the same account library', async () => {
+    const secondDeviceKey = 'device-f6bc7ca4-394b-48ab-af57-968f77a0cc4f';
+    const id = await t.mutation(api.media.enqueue, {
+      clientKey: ownerKey,
+      filename: 'shared.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 42,
+      durationMs: 1000,
+      createdAt: 100,
+    });
+    await t.mutation(api.libraries.claimCurrent, {
+      clientKey: secondDeviceKey,
+    });
+
+    expect(
+      (await t.query(api.media.list, { clientKey: secondDeviceKey })).map(
+        (item) => item._id,
+      ),
+    ).toContain(id);
+  });
 });
