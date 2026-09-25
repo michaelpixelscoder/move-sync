@@ -39,8 +39,10 @@ http.route({
         method: 'POST', headers,
         body: JSON.stringify({ name: 'Move Sync', mimeType: 'application/vnd.google-apps.folder' }),
       });
-      const folder = await folderResponse.json() as { id?: string; name?: string };
-      if (!folderResponse.ok || !folder.id || !folder.name) throw new Error('Unable to create the Move Sync folder');
+      const folder = await folderResponse.json() as { id?: string; name?: string; error?: { message?: string } };
+      if (!folderResponse.ok || !folder.id || !folder.name) {
+        throw new Error(`Unable to create the Move Sync folder (${folderResponse.status}): ${folder.error?.message ?? 'unknown Google Drive error'}`);
+      }
       const quotaResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=storageQuota', { headers });
       const quotaBody = await quotaResponse.json() as { storageQuota?: { limit?: string; usage?: string } };
       const totalBytes = numberOrNull(quotaBody.storageQuota?.limit);
