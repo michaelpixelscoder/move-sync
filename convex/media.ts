@@ -314,6 +314,14 @@ async function currentDevice(
     .unique();
 }
 
+async function activeBackendFor(ctx: Ctx, clientKey: string) {
+  const policy = await ctx.db
+    .query('storagePolicies')
+    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
+    .unique();
+  return policy?.activeBackend ?? 'convex';
+}
+
 export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
   const [videoUrl, thumbnailUrl, collection] = await Promise.all([
     media.storageId
@@ -445,6 +453,17 @@ export const list = query({
     if (!Number.isInteger(requestedLimit) || requestedLimit < 1)
       throw new ConvexError('limit must be a positive integer');
     const limit = Math.min(requestedLimit, MAX_MEDIA_LIMIT);
+    const activeBackend = await activeBackendFor(ctx, args.clientKey);
+    if (activeBackend === 'googleDrive') {
+      const rows = await ctx.db
+        .query('media')
+        .withIndex('by_client_key_and_active_backend_and_created_at', (q) =>
+          q.eq('clientKey', args.clientKey).eq('activeBackend', 'googleDrive'),
+        )
+        .order('desc')
+        .take(limit);
+      return await Promise.all(rows.map((media) => mediaView(ctx, media)));
+    }
     const rows = args.state
       ? await ctx.db
           .query('media')
@@ -474,13 +493,41 @@ export const listPage = query({
     assertClientKey(args.clientKey);
     const filter = args.filter;
     const sort = args.sort ?? 'desc';
-    if (!filter)
+    const activeBackend = await activeBackendFor(ctx, args.clientKey);
+    // A backend switch is a view switch, never a migration. Legacy rows are
+    // Convex-backed; newly written rows have an explicit activeBackend.
+    if (!filter && activeBackend === 'convex')
       return await pageView(
         ctx,
         await ctx.db
           .query('media')
           .withIndex('by_client_key_and_created_at', (q) =>
             q.eq('clientKey', args.clientKey),
+          )
+          .order(sort)
+          .paginate(args.paginationOpts),
+      );
+    if (!filter)
+      return await pageView(
+        ctx,
+        await ctx.db
+          .query('media')
+          .withIndex('by_client_key_and_active_backend_and_created_at', (q) =>
+            q.eq('clientKey', args.clientKey).eq('activeBackend', activeBackend),
+          )
+          .order(sort)
+          .paginate(args.paginationOpts),
+      );
+    // The Drive backend's scoped indexes are intentionally limited until its
+    // provider lifecycle is live. Return only Drive-owned records rather than
+    // ever exposing records from an inactive backend through a secondary filter.
+    if (activeBackend === 'googleDrive')
+      return await pageView(
+        ctx,
+        await ctx.db
+          .query('media')
+          .withIndex('by_client_key_and_active_backend_and_created_at', (q) =>
+            q.eq('clientKey', args.clientKey).eq('activeBackend', 'googleDrive'),
           )
           .order(sort)
           .paginate(args.paginationOpts),
@@ -724,6 +771,7 @@ export const enqueue = mutation({
       : null;
     if (existing && storageOf(existing).cloudAvailable) return existing._id;
     const now = Date.now();
+    const activeBackend = await activeBackendFor(ctx, args.clientKey);
     const device = await currentDevice(
       ctx,
       args.clientKey,
@@ -743,6 +791,7 @@ export const enqueue = mutation({
       width: args.width,
       height: args.height,
       deviceId: device?._id,
+      activeBackend,
       state: 'queued' as const,
       transferState: 'queued' as const,
       syncError: undefined,
@@ -783,6 +832,20 @@ export const generateUploadUrl = mutation({
   returns: v.string(),
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
+    const activeBackend = await activeBackendFor(ctx, args.clientKey);
+    if (activeBackend === 'googleDrive') {
+      const policy = await ctx.db
+        .query('storagePolicies')
+        .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
+        .unique();
+      if (policy?.driveConnectionState !== 'connected')
+        throw new ConvexError(
+          'Google Drive is not connected. Sync is paused and will not fall back to managed storage.',
+        );
+      throw new ConvexError(
+        'Google Drive uploads are not configured for this internal test environment. Sync is paused.',
+      );
+    }
     if (args.id) {
       const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
       if (storageOf(media).cloudAvailable)
@@ -906,6 +969,7 @@ export const completeUpload = mutation({
       width: args.width,
       height: args.height,
       deviceId: device?._id,
+      activeBackend: await activeBackendFor(ctx, args.clientKey),
       storageId: args.storageId,
       thumbnailStorageId: args.thumbnailStorageId,
       state: 'synced' as const,
@@ -932,6 +996,23 @@ export const completeUpload = mutation({
         await ctx.storage.delete(oldStorageId);
       if (oldThumbnailId && oldThumbnailId !== args.thumbnailStorageId)
         await ctx.storage.delete(oldThumbnailId);
+      const object = await ctx.db
+        .query('storageObjects')
+        .withIndex('by_media_id_and_backend', (q) =>
+          q.eq('mediaId', existing._id).eq('backend', 'convex'),
+        )
+        .unique();
+      const objectValues = {
+        clientKey: args.clientKey,
+        mediaId: existing._id,
+        backend: 'convex' as const,
+        providerObjectRef: String(args.storageId),
+        sizeBytes: storageMetadata.size,
+        state: 'available' as const,
+        updatedAt: now,
+      };
+      if (object) await ctx.db.patch(object._id, objectValues);
+      else await ctx.db.insert('storageObjects', { ...objectValues, createdAt: now });
       return existing._id;
     }
     const id = await ctx.db.insert('media', {
@@ -943,6 +1024,16 @@ export const completeUpload = mutation({
       clientKey: args.clientKey,
       filename: values.filename,
     };
+    await ctx.db.insert('storageObjects', {
+      clientKey: args.clientKey,
+      mediaId: id,
+      backend: 'convex',
+      providerObjectRef: String(args.storageId),
+      sizeBytes: storageMetadata.size,
+      state: 'available',
+      createdAt: now,
+      updatedAt: now,
+    });
     await updateSummary(ctx, args.clientKey, undefined, values);
     await setActivity(ctx, inserted, {
       state: 'completed',
@@ -1147,6 +1238,13 @@ export const remove = mutation({
     if (media.storageId) await ctx.storage.delete(media.storageId);
     if (media.thumbnailStorageId)
       await ctx.storage.delete(media.thumbnailStorageId);
+    const objects = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'convex'),
+      )
+      .take(2);
+    for (const object of objects) await ctx.db.delete(object._id);
     await removePlaylistMemberships(ctx, media._id);
     await ctx.db.delete(media._id);
     await updateSummary(ctx, args.clientKey, media);
@@ -1177,6 +1275,13 @@ export const removeMany = mutation({
       if (media.storageId) await ctx.storage.delete(media.storageId);
       if (media.thumbnailStorageId)
         await ctx.storage.delete(media.thumbnailStorageId);
+      const objects = await ctx.db
+        .query('storageObjects')
+        .withIndex('by_media_id_and_backend', (q) =>
+          q.eq('mediaId', media._id).eq('backend', 'convex'),
+        )
+        .take(2);
+      for (const object of objects) await ctx.db.delete(object._id);
       await removePlaylistMemberships(ctx, media._id);
       await ctx.db.delete(media._id);
       await updateSummary(ctx, args.clientKey, media);

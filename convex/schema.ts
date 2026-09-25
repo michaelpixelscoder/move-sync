@@ -14,6 +14,21 @@ const activityState = v.union(
   v.literal('completed'),
   v.literal('failed'),
 );
+const storageBackend = v.union(v.literal('convex'), v.literal('googleDrive'));
+const storageObjectState = v.union(
+  v.literal('available'),
+  v.literal('missing'),
+  v.literal('deletePending'),
+  v.literal('deleted'),
+);
+const driveConnectionState = v.union(
+  v.literal('notConnected'),
+  v.literal('connected'),
+  v.literal('authorizationExpired'),
+  v.literal('authorizationRevoked'),
+  v.literal('folderMissing'),
+  v.literal('unavailable'),
+);
 
 export default defineSchema({
   ...authTables,
@@ -25,6 +40,61 @@ export default defineSchema({
   })
     .index('by_client_key', ['clientKey'])
     .index('by_user_id', ['userId']),
+  // The plan is held by the backend and selects an account-wide backend. It is
+  // intentionally not accepted as a per-upload client argument.
+  storagePolicies: defineTable({
+    clientKey: v.string(),
+    internalTestPlan: v.union(
+      v.literal('freeDrive'),
+      v.literal('simpleConvex'),
+      v.literal('premiumConvex'),
+    ),
+    activeBackend: storageBackend,
+    driveConnectionState: driveConnectionState,
+    driveAccountEmail: v.optional(v.string()),
+    driveFolderId: v.optional(v.string()),
+    driveFolderName: v.optional(v.string()),
+    driveTotalBytes: v.optional(v.number()),
+    driveUsedBytes: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index('by_client_key', ['clientKey']),
+  // OAuth state and credentials are kept server-side. The browser only ever
+  // receives a short-lived, single-use state value and a Google redirect URL.
+  driveOAuthStates: defineTable({
+    clientKey: v.string(),
+    userId: v.id('users'),
+    state: v.string(),
+    redirectTo: v.string(),
+    expiresAt: v.number(),
+  }).index('by_state', ['state']),
+  driveConnections: defineTable({
+    clientKey: v.string(),
+    userId: v.id('users'),
+    encryptedAccessToken: v.optional(v.string()),
+    encryptedRefreshToken: v.string(),
+    accessTokenExpiresAt: v.optional(v.number()),
+    email: v.string(),
+    folderId: v.string(),
+    folderName: v.string(),
+    updatedAt: v.number(),
+  })
+    .index('by_client_key', ['clientKey'])
+    .index('by_user_id', ['userId']),
+  // Provider references remain backend-only. Clients receive resolved URLs, not
+  // raw Drive IDs, refresh tokens, or Convex storage IDs.
+  storageObjects: defineTable({
+    clientKey: v.string(),
+    mediaId: v.id('media'),
+    backend: storageBackend,
+    providerObjectRef: v.string(),
+    sizeBytes: v.number(),
+    checksum: v.optional(v.string()),
+    state: storageObjectState,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_media_id_and_backend', ['mediaId', 'backend'])
+    .index('by_client_key_and_backend', ['clientKey', 'backend']),
   collections: defineTable({
     // Legacy partition key. Public functions map an authenticated claim to it.
     clientKey: v.string(),
@@ -105,6 +175,8 @@ export default defineSchema({
     syncError: v.optional(v.string()),
     storageId: v.optional(v.id('_storage')),
     thumbnailStorageId: v.optional(v.id('_storage')),
+    // Missing on legacy records means managed Convex storage.
+    activeBackend: v.optional(storageBackend),
     syncedAt: v.optional(v.number()),
     localRemovedAt: v.optional(v.number()),
     updatedAt: v.number(),
@@ -113,6 +185,11 @@ export default defineSchema({
     .index('by_client_key_and_transfer_state', ['clientKey', 'transferState'])
     .index('by_client_key_and_state', ['clientKey', 'state'])
     .index('by_client_key_and_created_at', ['clientKey', 'createdAt'])
+    .index('by_client_key_and_active_backend_and_created_at', [
+      'clientKey',
+      'activeBackend',
+      'createdAt',
+    ])
     .index('by_client_key_and_collection_ref', ['clientKey', 'collectionRef'])
     .index('by_client_key_and_device_id', ['clientKey', 'deviceId'])
     .index('by_client_key_and_duration_ms', ['clientKey', 'durationMs'])

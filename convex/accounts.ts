@@ -78,6 +78,16 @@ export const deleteCurrent = mutation({
           .query('librarySummaries')
           .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
           .take(MAX_ACCOUNT_DOCUMENTS + 1),
+        ctx.db
+          .query('storageObjects')
+          .withIndex('by_client_key_and_backend', (q) =>
+            q.eq('clientKey', clientKey),
+          )
+          .take(MAX_ACCOUNT_DOCUMENTS + 1),
+        ctx.db
+          .query('storagePolicies')
+          .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
+          .take(MAX_ACCOUNT_DOCUMENTS + 1),
       ]);
       domainDocuments.push(...groups.flat());
     }

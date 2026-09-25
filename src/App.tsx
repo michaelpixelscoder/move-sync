@@ -160,6 +160,7 @@ function AuthenticatedApp({
       <BackupScreen clientKey={clientKey} />
     ) : screen.name === 'settings' ? (
       <SettingsScreen
+        clientKey={clientKey}
         onDeleteAccount={onDeleteAccount}
         onOpenBackup={() => navigate({ name: 'backup' })}
         onSignOut={onSignOut}

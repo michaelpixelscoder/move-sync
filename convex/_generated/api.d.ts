@@ -14,12 +14,15 @@ import type * as auth from "../auth.js";
 import type * as authorizedFunctions from "../authorizedFunctions.js";
 import type * as collections from "../collections.js";
 import type * as devices from "../devices.js";
+import type * as driveCrypto from "../driveCrypto.js";
+import type * as driveInternals from "../driveInternals.js";
 import type * as http from "../http.js";
 import type * as libraries from "../libraries.js";
 import type * as media from "../media.js";
 import type * as migrations from "../migrations.js";
 import type * as playlists from "../playlists.js";
 import type * as shared from "../shared.js";
+import type * as storage from "../storage.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -35,12 +38,15 @@ declare const fullApi: ApiFromModules<{
   authorizedFunctions: typeof authorizedFunctions;
   collections: typeof collections;
   devices: typeof devices;
+  driveCrypto: typeof driveCrypto;
+  driveInternals: typeof driveInternals;
   http: typeof http;
   libraries: typeof libraries;
   media: typeof media;
   migrations: typeof migrations;
   playlists: typeof playlists;
   shared: typeof shared;
+  storage: typeof storage;
   viewer: typeof viewer;
 }>;
 

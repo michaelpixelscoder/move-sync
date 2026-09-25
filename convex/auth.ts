@@ -3,7 +3,7 @@ import { Password } from '@convex-dev/auth/providers/Password';
 import { Email } from '@convex-dev/auth/providers/Email';
 import { convexAuth } from '@convex-dev/auth/server';
 
-function isAllowedRedirect(redirectTo: string) {
+export function isAllowedRedirect(redirectTo: string) {
   const url = new URL(redirectTo);
   if (url.protocol === 'move-sync:') return true;
 

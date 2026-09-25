@@ -143,6 +143,58 @@ describe('Move Sync backend', () => {
     ).toContain(id);
   });
 
+  it('keeps storage selection server-owned, hides prior-backend media, and never falls back from Drive', async () => {
+    const mediaId = await t.mutation(api.media.enqueue, {
+      clientKey: ownerKey,
+      localAssetId: 'managed-before-switch',
+      filename: 'managed.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 12,
+      durationMs: 1,
+      createdAt: 1,
+    });
+    await t.mutation(api.storage.setInternalTestPlan, {
+      clientKey: ownerKey,
+      plan: 'freeDrive',
+    });
+    const policy = await t.query(api.storage.current, { clientKey: ownerKey });
+    expect(policy).toMatchObject({
+      internalTestPlan: 'freeDrive',
+      activeBackend: 'googleDrive',
+      canSync: false,
+    });
+    expect(
+      (
+        await t.query(api.media.listPage, {
+          clientKey: ownerKey,
+          filter: undefined,
+          sort: 'desc',
+          paginationOpts: { cursor: null, numItems: 10 },
+        })
+      ).page,
+    ).not.toContainEqual(expect.objectContaining({ _id: mediaId }));
+    await expect(
+      t.mutation(api.media.generateUploadUrl, {
+        clientKey: ownerKey,
+        id: mediaId,
+      }),
+    ).rejects.toThrow(/will not fall back/i);
+    await t.mutation(api.storage.setInternalTestPlan, {
+      clientKey: ownerKey,
+      plan: 'simpleConvex',
+    });
+    expect(
+      (
+        await t.query(api.media.listPage, {
+          clientKey: ownerKey,
+          filter: undefined,
+          sort: 'desc',
+          paginationOpts: { cursor: null, numItems: 10 },
+        })
+      ).page,
+    ).toContainEqual(expect.objectContaining({ _id: mediaId }));
+  });
+
   it('reconciles truthful device collections and protects AutoSync ownership', async () => {
     const [camera] = await t.mutation(api.collections.reconcile, {
       clientKey: ownerKey,
