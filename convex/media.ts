@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
+import { internal } from './_generated/api';
 import type { MutationCtx, QueryCtx } from './_generated/server';
 import {
   libraryMutation as mutation,
@@ -842,9 +843,9 @@ export const generateUploadUrl = mutation({
         throw new ConvexError(
           'Google Drive is not connected. Sync is paused and will not fall back to managed storage.',
         );
-      throw new ConvexError(
-        'Google Drive uploads are not configured for this internal test environment. Sync is paused.',
-      );
+      // Uploads are staged privately in Convex, then copied by an internal
+      // action using the server-held Drive credential. The client never sees a
+      // Drive access token or provider object ID.
     }
     if (args.id) {
       const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
@@ -1013,6 +1014,7 @@ export const completeUpload = mutation({
       };
       if (object) await ctx.db.patch(object._id, objectValues);
       else await ctx.db.insert('storageObjects', { ...objectValues, createdAt: now });
+      if (values.activeBackend === 'googleDrive') await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, { mediaId: existing._id });
       return existing._id;
     }
     const id = await ctx.db.insert('media', {
@@ -1042,6 +1044,7 @@ export const completeUpload = mutation({
     });
     if (device)
       await ctx.db.patch(device._id, { lastBackupAt: now, lastSeenAt: now });
+    if (values.activeBackend === 'googleDrive') await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, { mediaId: id });
     return id;
   },
 });

@@ -88,3 +88,45 @@ export const failConnection = internalMutation({
     return { redirectTo: state.redirectTo };
   },
 });
+
+export const getTransferDetails = internalQuery({
+  args: { mediaId: v.id('media') },
+  returns: v.union(v.object({ clientKey: v.string(), storageId: v.id('_storage'), filename: v.string(), mimeType: v.string(), sizeBytes: v.number(), folderId: v.string(), encryptedAccessToken: v.union(v.string(), v.null()), encryptedRefreshToken: v.string(), accessTokenExpiresAt: v.union(v.number(), v.null()) }), v.null()),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (!media?.storageId || media.activeBackend !== 'googleDrive') return null;
+    const connection = await ctx.db.query('driveConnections').withIndex('by_client_key', (q) => q.eq('clientKey', media.clientKey)).unique();
+    if (!connection) return null;
+    return { clientKey: media.clientKey, storageId: media.storageId, filename: media.filename, mimeType: media.mimeType, sizeBytes: media.sizeBytes, folderId: connection.folderId, encryptedAccessToken: connection.encryptedAccessToken ?? null, encryptedRefreshToken: connection.encryptedRefreshToken, accessTokenExpiresAt: connection.accessTokenExpiresAt ?? null };
+  },
+});
+
+export const saveAccessToken = internalMutation({
+  args: { clientKey: v.string(), accessToken: v.string(), expiresAt: v.number() }, returns: v.null(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.db.query('driveConnections').withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey)).unique();
+    if (connection) await ctx.db.patch(connection._id, { encryptedAccessToken: await encryptDriveToken(args.accessToken), accessTokenExpiresAt: args.expiresAt, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+export const completeTransfer = internalMutation({
+  args: { mediaId: v.id('media'), clientKey: v.string(), providerObjectRef: v.string(), sizeBytes: v.number() }, returns: v.null(),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (!media || media.clientKey !== args.clientKey) return null;
+    const existing = await ctx.db.query('storageObjects').withIndex('by_media_id_and_backend', (q) => q.eq('mediaId', args.mediaId).eq('backend', 'googleDrive')).unique();
+    const values = { clientKey: args.clientKey, mediaId: args.mediaId, backend: 'googleDrive' as const, providerObjectRef: args.providerObjectRef, sizeBytes: args.sizeBytes, state: 'available' as const, updatedAt: Date.now() };
+    if (existing) await ctx.db.patch(existing._id, values); else await ctx.db.insert('storageObjects', { ...values, createdAt: Date.now() });
+    return null;
+  },
+});
+
+export const failTransfer = internalMutation({
+  args: { mediaId: v.id('media'), clientKey: v.string(), reason: v.string() }, returns: v.null(),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (media?.clientKey === args.clientKey) await ctx.db.patch(media._id, { state: 'error', transferState: 'error', syncError: args.reason, updatedAt: Date.now() });
+    return null;
+  },
+});
