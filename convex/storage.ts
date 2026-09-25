@@ -27,6 +27,7 @@ const policyValidator = v.object({
   driveFolderName: v.union(v.string(), v.null()),
   driveTotalBytes: v.union(v.number(), v.null()),
   driveUsedBytes: v.union(v.number(), v.null()),
+  driveError: v.union(v.string(), v.null()),
   canSync: v.boolean(),
   message: v.string(),
 });
@@ -49,6 +50,7 @@ function view(policy?: {
   driveFolderName?: string;
   driveTotalBytes?: number;
   driveUsedBytes?: number;
+  driveError?: string;
 } | null) {
   const value = policy ?? {
     internalTestPlan: 'simpleConvex' as const,
@@ -66,7 +68,7 @@ function view(policy?: {
         : value.driveConnectionState === 'authorizationExpired' ||
             value.driveConnectionState === 'authorizationRevoked'
           ? 'Google Drive access needs to be reconnected before syncing.'
-          : 'Connect Google Drive before syncing. Move Sync will not fall back to managed storage.';
+          : value.driveError ?? 'Connect Google Drive before syncing. Move Sync will not fall back to managed storage.';
   return {
     internalTestPlan: value.internalTestPlan,
     activeBackend: value.activeBackend,
@@ -75,6 +77,7 @@ function view(policy?: {
     driveFolderName: value.driveFolderName ?? null,
     driveTotalBytes: value.driveTotalBytes ?? null,
     driveUsedBytes: value.driveUsedBytes ?? null,
+    driveError: value.driveError ?? null,
     canSync,
     message,
   };
@@ -169,6 +172,7 @@ export const disconnectDrive = mutation({
       driveFolderName: undefined,
       driveTotalBytes: undefined,
       driveUsedBytes: undefined,
+      driveError: undefined,
       updatedAt: Date.now(),
     };
     if (existing) await ctx.db.patch(existing._id, values);

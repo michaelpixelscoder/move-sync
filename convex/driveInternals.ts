@@ -56,6 +56,7 @@ export const completeConnection = internalMutation({
       driveFolderName: args.folderName,
       driveTotalBytes: args.totalBytes ?? undefined,
       driveUsedBytes: args.usedBytes ?? undefined,
+      driveError: undefined,
       updatedAt: Date.now(),
     };
     if (policy) await ctx.db.patch(policy._id, policyValues);
@@ -79,6 +80,7 @@ export const failConnection = internalMutation({
       internalTestPlan: policy?.internalTestPlan ?? ('freeDrive' as const),
       activeBackend: policy?.activeBackend ?? ('googleDrive' as const),
       driveConnectionState: 'unavailable' as const,
+      driveError: args.reason,
       updatedAt: Date.now(),
     };
     if (policy) await ctx.db.patch(policy._id, values);

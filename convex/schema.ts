@@ -56,6 +56,7 @@ export default defineSchema({
     driveFolderName: v.optional(v.string()),
     driveTotalBytes: v.optional(v.number()),
     driveUsedBytes: v.optional(v.number()),
+    driveError: v.optional(v.string()),
     updatedAt: v.number(),
   }).index('by_client_key', ['clientKey']),
   // OAuth state and credentials are kept server-side. The browser only ever
