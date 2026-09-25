@@ -67,6 +67,7 @@ export const mediaValidator = v.object({
   syncError: v.union(v.string(), v.null()),
   storage: storageValidator,
   videoUrl: v.union(v.string(), v.null()),
+  driveFileId: v.union(v.string(), v.null()),
   thumbnailUrl: v.union(v.string(), v.null()),
   syncedAt: v.union(v.number(), v.null()),
   localRemovedAt: v.union(v.number(), v.null()),

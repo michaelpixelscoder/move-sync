@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
@@ -53,7 +53,7 @@ export function PlayerScreen({
   const playback = useEvent(player, 'statusChange', { status: player.status });
   if (item === undefined) return <LoadingState label="Opening video…" />;
   const media = item as MediaRecord;
-  if (!media.videoUrl)
+  if (!media.videoUrl && !media.driveFileId)
     return (
       <ErrorState
         message="The cloud video file is unavailable."
@@ -159,17 +159,24 @@ export function PlayerScreen({
               <Text style={styles.loadingText}>Loading video…</Text>
             </View>
           ) : null}
-          <VideoView
-            testID="video-player"
-            player={player}
-            style={styles.video}
-            contentFit="contain"
-            nativeControls
-            fullscreenOptions={{ enable: true }}
-            allowsPictureInPicture
-            startsPictureInPictureAutomatically={false}
-            onFirstFrameRender={() => setFirstFrameReady(true)}
-          />
+          {Platform.OS === 'web' && media.driveFileId
+            ? createElement('iframe', {
+                title: titleFromFilename(media.filename),
+                src: `https://drive.google.com/file/d/${encodeURIComponent(media.driveFileId)}/preview`,
+                allow: 'autoplay; fullscreen',
+                style: { width: '100%', height: '100%', border: 0 },
+              })
+            : <VideoView
+                testID="video-player"
+                player={player}
+                style={styles.video}
+                contentFit="contain"
+                nativeControls
+                fullscreenOptions={{ enable: true }}
+                allowsPictureInPicture
+                startsPictureInPictureAutomatically={false}
+                onFirstFrameRender={() => setFirstFrameReady(true)}
+              />}
           {playback.status === 'error' || (!isOnline && !firstFrameReady) ? (
             <View style={styles.recovery}>
               <Text style={styles.loadingText}>

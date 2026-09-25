@@ -326,8 +326,11 @@ async function activeBackendFor(ctx: Ctx, clientKey: string) {
 }
 
 export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
+  const driveObject = media.activeBackend === 'googleDrive'
+    ? await ctx.db.query('storageObjects').withIndex('by_media_id_and_backend', (q) => q.eq('mediaId', media._id).eq('backend', 'googleDrive')).unique()
+    : null;
   const [videoUrl, thumbnailUrl, collection] = await Promise.all([
-    media.storageId
+    media.storageId && !driveObject
       ? ctx.storage.getUrl(media.storageId)
       : Promise.resolve(null),
     media.thumbnailStorageId
@@ -358,6 +361,7 @@ export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
     syncError: media.syncError ?? null,
     storage: storageOf(media),
     videoUrl,
+    driveFileId: driveObject?.state === 'available' ? driveObject.providerObjectRef : null,
     thumbnailUrl,
     syncedAt: media.syncedAt ?? null,
     localRemovedAt: media.localRemovedAt ?? null,

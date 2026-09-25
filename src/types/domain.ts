@@ -35,6 +35,7 @@ export type MediaRecord = {
   syncError: string | null;
   storage: StorageAvailability;
   videoUrl: string | null;
+  driveFileId: string | null;
   thumbnailUrl: string | null;
 };
 export type CollectionRecord = {
