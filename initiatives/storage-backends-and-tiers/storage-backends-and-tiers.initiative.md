@@ -1,6 +1,6 @@
 ---
 title: 'Storage backends and subscription tiers'
-status: evaluating
+status: planned
 owner: michael
 created: 2026-09-25
 updated: 2026-09-25
@@ -43,11 +43,11 @@ Move Sync currently stores every video and thumbnail in Convex File Storage. Thi
 All required completion criteria:
 
 - [ ] A single account has one logical Move Sync library regardless of its storage policy.
-- [ ] Storage is selected by entitlement and explicit account-level connection state, not by a caller-supplied provider field on each upload.
+- [ ] Storage is selected by a server-owned internal-test plan and explicit account-level connection state, not by a caller-supplied provider field on each upload.
 - [ ] The released backend has a durable, encrypted provider-credential policy and a revocation path.
 - [ ] Migration, deletion, retry, and partial-failure behavior are defined for every released backend.
 - [ ] Subscription copy does not describe personal Google Drive as product-provided “Google Cloud” storage.
-- [ ] Billing, tax, refund, quota, and overage decisions are approved before paid tiers are released.
+- [ ] Billing, tax, refund, quota, and overage decisions are approved before any public paid tier is released; internal testing does not imply billing.
 
 ## 3. Constraints and stop conditions
 
@@ -102,32 +102,39 @@ When a condition is met, pause the affected backend or pricing tier. Keep Convex
 
 ## 5. Selected solution
 
-- **Decision:** Deferred. Evaluate Option A against a narrow Option B prototype before selecting a subscription model. Do not implement Option C in the first release.
-- **Working recommendation:** One logical Move Sync library per account. Backend choice belongs to entitlement and explicit account-level connection state, never to a client request or a per-upload picker. If Drive is released, describe it as “use your Google Drive storage,” not free product-provided cloud storage.
-- **Why this direction:** It preserves a simple default experience and allows a future Drive connection without making cross-provider behavior the default product model.
-- **Assumptions being made:** Convex remains authoritative for metadata and authorization; Drive is a future opt-in connection, not a replacement for the account system; paid tiers need a real entitlement source.
-- **Known risks:** Google Drive integration is not a pricing shortcut. It needs a separate consent, durable credential handling, and provider lifecycle support. Drive scopes and verification requirements can materially change delivery cost.
-- **In scope:** Storage policy, entitlement model, Drive feasibility, provider abstraction, migration, quota/usage, and subscription decision support.
-- **Out of scope:** A per-media backend chooser, S3 customer credentials, public sharing, and a production payment launch until a provider and billing policy are selected.
+- **Decision:** Select Option B for internal testing. Keep one logical library per Move Sync account, with only two storage backends: a user-connected Google Drive backend and managed Convex storage. Do not implement custom S3 or a per-upload backend chooser.
+- **Internal-test plans:** `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex`. A Settings dropdown changes the server-owned test plan. There is no billing, checkout, entitlement provider, or customer-facing subscription workflow in this phase.
+- **Google Drive connection:** Login identity and Drive identity remain separate. A signed-in Move Sync account may connect a Google account for Drive storage. Drive-backed media lives in a visible user-selected Move Sync folder, not the hidden app-data folder.
+- **Storage status:** Add a status section at the bottom of the sidebar. For Drive, show total/used/remaining Drive space and a progress bar. Expired or revoked authorization shows an explanation and reconnect button. A manually deleted target folder shows an explanation and a route to Storage Settings.
+- **Storage Settings:** Show connected Drive-account status and a Folder entry to choose the target Drive folder. Disconnecting Drive removes Move Sync access but leaves Drive videos intact.
+- **Failure policy:** If Drive/Convex is unavailable, Drive authorization is invalid, quota is exhausted, or the target folder is missing, stop sync and retain local media. Do not silently fall back to another backend.
+- **Switching policy:** Switching plan/storage makes prior-backend media invisible in the active library view. Retain database records and provider objects; defer migration and automatic deletion.
+- **Deletion policy:** Account deletion directly deletes objects from the selected backend. There is no export or retention window in this phase.
+- **Why this direction:** It tests both cost/ownership models without implying that billing or automatic migration exists.
+- **Assumptions being made:** Convex remains authoritative for metadata and authorization; Drive refresh tokens can be stored securely; personal Drive quota belongs to the connected Drive account.
+- **Known risks:** Visible Drive folders can be deleted or altered manually. Drive requires separate consent, durable credential handling, and lifecycle support. Hiding prior-backend media is not a data migration and must be clear in internal-test copy.
+- **In scope:** Internal-test plan dropdown, Drive connection/folder selection, provider abstraction, sidebar status, quota display, failure/reconnect states, direct deletion, and backend-filtered library views.
+- **Out of scope:** Billing, checkout, customer subscriptions, custom S3, per-media backend selection, automatic cross-backend migration, export, retention windows, public sharing, and production tier promises.
 
 ## 6. Implementation plan
 
-| Milestone or task                      | Result                                                                               | Dependencies                                      | Status  | Completion check                                                              |
-| -------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
-| Measure current library usage          | Distribution of stored bytes, upload volume, and egress by account                   | Safe analytics and billing access                 | pending | A decision-ready cost model exists without collecting media content           |
-| Define tiers and entitlement source    | Approved Free/Simple/Premium allowances, over-limit behavior, and billing owner      | Product and finance decisions                     | pending | Tier table and entitlement data model are approved                            |
-| Drive feasibility prototype            | One test account writes, reads, deletes, revokes, and reconnects one app-owned video | Google Cloud OAuth client and test Drive accounts | pending | Narrow-scope proof with documented scopes and token handling                  |
-| Define storage-object abstraction      | Provider-neutral metadata/lifecycle model plus migration strategy                    | Architecture review                               | pending | No client receives a raw provider authorization credential                    |
-| Build one selected backend path        | End-to-end managed or Drive storage through the abstraction                          | Selected solution                                 | pending | Upload, playback, retry, deletion, account deletion, and migration tests pass |
-| Add entitlements and quota enforcement | Server-side tier checks and truthful UI                                              | Billing/entitlement decision                      | pending | Changing client plan input cannot exceed a backend entitlement                |
-| Pilot and observe                      | Controlled cohort validates pricing, recovery, and support flow                      | All preceding tasks                               | pending | Cost and failure targets hold for the agreed observation window               |
+| Milestone or task                           | Result                                                                                                               | Dependencies                                      | Status  | Completion check                                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| Define internal-test plan model             | Server-owned `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex` selection via Settings                 | Product decision                                  | pending | Client cannot choose a backend without the server-owned plan allowing it                       |
+| Drive feasibility prototype                 | One test account chooses a visible folder, writes, reads, deletes, revokes, reconnects, and detects a deleted folder | Google Cloud OAuth client and test Drive accounts | pending | Narrow-scope proof with documented scopes and durable token handling                           |
+| Define storage-object abstraction           | Provider-neutral metadata/lifecycle model, including active/inactive backend filtering                               | Architecture review                               | pending | No client receives a raw provider credential; old-backend media can be hidden without deletion |
+| Build Drive connection and Storage Settings | Connected account, folder selector, disconnect behavior, and reconnect/folder-repair actions                         | Drive prototype                                   | pending | Disconnect preserves Drive files; reconnect and folder selection work                          |
+| Add sidebar storage status                  | Drive total/used/remaining progress plus unavailable, revoked, expired, and missing-folder states                    | Drive connection and usage API                    | pending | Status is truthful and never instructs the client to delete local media                        |
+| Build upload/playback/deletion paths        | End-to-end selected-backend upload, playback, retry, direct account deletion, and safe outage behavior               | Storage abstraction                               | pending | No fallback occurs; provider objects are deleted only by explicit account deletion             |
+| Add backend-filtered library views          | Plan/storage switch hides prior-backend media while retaining records and objects                                    | Storage abstraction                               | pending | Switching never deletes or cross-contaminates library data                                     |
+| Pilot and observe                           | Internal cohort validates connection, folder, quota, failure, and deletion flows                                     | All preceding tasks                               | pending | Failure and cost targets hold for the agreed observation window                                |
 
 ## 7. Test instructions
 
 ### Prerequisites
 
 - Two Move Sync accounts and, for Drive testing, two separate Google accounts
-- A non-production Google OAuth client with the exact requested Drive scope
+- A non-production Google OAuth client with the exact requested Drive scope and a visible test folder
 - Fixtures covering video, thumbnail, interrupted upload, deleted remote file, and revoked token
 - A selected entitlement test fixture; no production payment credentials in tests
 
@@ -145,14 +152,16 @@ npm run test:web
 Expected result:
 
 - Exit code `0` for the applicable suite.
-- Tests prove a user cannot read, attach, delete, or migrate another account’s object; retries are idempotent; quota is enforced server-side; and account deletion reports or retries all provider objects.
+- Tests prove a user cannot read, attach, delete, or migrate another account’s object; retries are idempotent; active-backend filtering is server-enforced; Drive folder/authorization failure stops sync; and account deletion directly deletes applicable provider objects.
 
 ### Human acceptance checks
 
-- [ ] A person understands whether storage is included by Move Sync or consumed from their own Google Drive before connecting it.
-- [ ] A Drive user revokes access, reconnects, and receives a clear status without exposing another account’s metadata.
-- [ ] A paid-tier tester can see allowance, current usage, and a clear over-limit outcome.
-- [ ] The owner approves subscription, privacy, retention, export, and deletion wording.
+- [ ] An internal tester understands that the Google Drive plan uses their own Drive quota before connecting it.
+- [ ] A Drive user selects a visible folder, revokes access, reconnects, and receives clear sidebar status without exposing another account’s metadata.
+- [ ] A tester sees Drive total/used/remaining capacity and a clear no-sync outcome when the backend, authorization, quota, or folder is unavailable.
+- [ ] A tester changes plan/storage and confirms old-backend media becomes invisible without being deleted.
+- [ ] A tester disconnects Drive and confirms existing Drive videos remain.
+- [ ] The owner approves internal-test wording for direct deletion and the absence of export/retention.
 
 ### Outcome measurement
 
@@ -162,7 +171,7 @@ Track storage bytes, egress, failed uploads, provider-token failures, deletion r
 
 ### Cycle 1 — To be scheduled
 
-- **Released:** Feasibility prototype only; no customer-facing tier promise
+- **Released:** Internal-test storage selector and, if feasibility passes, Drive connection/folder workflow; no customer-facing tier promise
 - **Audience:** Internal test accounts
 - **Expected result:** A narrow Drive scope can support app-owned video lifecycle operations, or evidence demonstrates that managed Convex storage is the appropriate single backend
 - **Observation period:** Two weeks after the prototype passes
@@ -174,16 +183,19 @@ Track storage bytes, egress, failed uploads, provider-token failures, deletion r
 
 ## 9. Decision log
 
-| Date       | Decision                                                | Evidence and rationale                                                                                                                                                                                                                                                           |
-| ---------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-25 | Initiative created in evaluation                        | Move Sync currently has one Convex storage path and no entitlement model; Google Drive and paid tiers require a storage-policy decision before implementation.                                                                                                                   |
-| 2026-09-25 | Do not start with multiple user-selectable backends     | Per-upload/provider selection multiplies lifecycle, migration, support, and billing complexity without proving customer value.                                                                                                                                                   |
-| 2026-09-25 | Evaluate narrow Drive scopes only                       | Google documents `drive.appdata` and `drive.file` as non-sensitive options; broad Drive scopes are restricted and can introduce verification/security-assessment requirements. [Google Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) |
-| 2026-09-25 | Treat Convex pricing as a cost input, not a tier design | Convex file storage and egress are usage-based after included allowances, so a tier needs an entitlement and margin policy. [Convex limits and pricing](https://docs.convex.dev/production/state/limits)                                                                         |
+| Date       | Decision                                                          | Evidence and rationale                                                                                                                                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-25 | Initiative created in evaluation                                  | Move Sync currently has one Convex storage path and no entitlement model; Google Drive and paid tiers require a storage-policy decision before implementation.                                                                                                                   |
+| 2026-09-25 | Do not start with multiple user-selectable backends               | Per-upload/provider selection multiplies lifecycle, migration, support, and billing complexity without proving customer value.                                                                                                                                                   |
+| 2026-09-25 | Evaluate narrow Drive scopes only                                 | Google documents `drive.appdata` and `drive.file` as non-sensitive options; broad Drive scopes are restricted and can introduce verification/security-assessment requirements. [Google Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) |
+| 2026-09-25 | Treat Convex pricing as a cost input, not a tier design           | Convex file storage and egress are usage-based after included allowances, so a tier needs an entitlement and margin policy. [Convex limits and pricing](https://docs.convex.dev/production/state/limits)                                                                         |
+| 2026-09-25 | Select account-level Drive or Convex storage for internal testing | Use a Settings dropdown for `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex`; it is not billing or a public subscription workflow.                                                                                                                               |
+| 2026-09-25 | Use a visible user-selected Google Drive folder                   | The Drive connection is distinct from login. Folder deletion, expired/revoked access, quota, and backend outages stop sync and are reported in sidebar storage status.                                                                                                           |
+| 2026-09-25 | Defer automatic migration                                         | A storage switch hides prior-backend media but retains metadata and objects. Account deletion directly deletes selected-backend objects; Drive disconnect leaves Drive files intact.                                                                                             |
 
 ## 10. Closure
 
-- **Final status:** Open — evaluating
+- **Final status:** Open — planned
 - **Closed on:** Not closed
 - **Completion results:** Pending a selected backend and tier policy, a narrow Drive feasibility result, and pilot evidence.
 - **Resources used:** Pending
