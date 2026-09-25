@@ -76,7 +76,8 @@ export function SignInScreen() {
       const { redirect } = await signIn('google', { redirectTo });
       if (!redirect) throw new Error('Google sign-in did not start.');
       if (Platform.OS === 'web') {
-        globalThis.location.assign(redirect.toString());
+        // ConvexAuthProvider performs the browser navigation itself. Native
+        // clients receive this URL to open in an in-app auth session below.
         return;
       }
 

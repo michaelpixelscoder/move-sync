@@ -38,10 +38,6 @@ function MoveSync() {
   const deleteAccount = useMutation(api.accounts.deleteCurrent);
   const [endingSession, setEndingSession] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && viewer === null) void signOut();
-  }, [isAuthenticated, isLoading, signOut, viewer]);
-
   const beforeSessionInvalidation = async () => {
     setEndingSession(true);
     await clearClientKey();
