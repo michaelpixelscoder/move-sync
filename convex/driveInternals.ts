@@ -65,12 +65,24 @@ export const completeConnection = internalMutation({
 });
 
 export const failConnection = internalMutation({
-  args: { state: v.string() },
+  args: { state: v.string(), reason: v.optional(v.string()) },
   returns: v.union(v.object({ redirectTo: v.string() }), v.null()),
   handler: async (ctx, args) => {
     const state = await ctx.db.query('driveOAuthStates').withIndex('by_state', (q) => q.eq('state', args.state)).unique();
     if (!state) return null;
     await ctx.db.delete(state._id);
+    const policy = await ctx.db
+      .query('storagePolicies')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', state.clientKey))
+      .unique();
+    const values = {
+      internalTestPlan: policy?.internalTestPlan ?? ('freeDrive' as const),
+      activeBackend: policy?.activeBackend ?? ('googleDrive' as const),
+      driveConnectionState: 'unavailable' as const,
+      updatedAt: Date.now(),
+    };
+    if (policy) await ctx.db.patch(policy._id, values);
+    else await ctx.db.insert('storagePolicies', { clientKey: state.clientKey, ...values });
     return { redirectTo: state.redirectTo };
   },
 });

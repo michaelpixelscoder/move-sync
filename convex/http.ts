@@ -16,7 +16,7 @@ http.route({
     const code = url.searchParams.get('code');
     if (!state) return new Response('Missing Google Drive state', { status: 400 });
     if (!code || url.searchParams.get('error')) {
-      const failed = await ctx.runMutation(internal.driveInternals.failConnection, { state });
+      const failed = await ctx.runMutation(internal.driveInternals.failConnection, { state, reason: 'Google authorization was denied.' });
       return redirectTo(failed?.redirectTo, 'drive=error');
     }
     const clientId = process.env.AUTH_GOOGLE_ID;
@@ -51,8 +51,10 @@ http.route({
         email: profile.email, folderId: folder.id, folderName: folder.name, totalBytes, usedBytes,
       });
       return redirectTo(complete?.redirectTo, 'drive=connected');
-    } catch {
-      const failed = await ctx.runMutation(internal.driveInternals.failConnection, { state });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Google Drive connection failed';
+      console.error('Google Drive OAuth callback failed:', reason);
+      const failed = await ctx.runMutation(internal.driveInternals.failConnection, { state, reason });
       return redirectTo(failed?.redirectTo, 'drive=error');
     }
   }),
