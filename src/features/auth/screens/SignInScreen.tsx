@@ -69,10 +69,16 @@ export function SignInScreen() {
     setBusy('google');
     setError(null);
     try {
-      const redirectTo = makeRedirectUri({ scheme: 'move-sync' });
+      const redirectTo =
+        Platform.OS === 'web'
+          ? globalThis.location.origin
+          : makeRedirectUri({ scheme: 'move-sync' });
       const { redirect } = await signIn('google', { redirectTo });
-      if (Platform.OS === 'web') return;
       if (!redirect) throw new Error('Google sign-in did not start.');
+      if (Platform.OS === 'web') {
+        globalThis.location.assign(redirect.toString());
+        return;
+      }
 
       const result = await WebBrowser.openAuthSessionAsync(
         redirect.toString(),
