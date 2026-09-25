@@ -82,6 +82,50 @@ async function sendToStorage(
   return JSON.parse(response.body).storageId as Id<'_storage'>;
 }
 
+async function sendDirectlyToDrive(
+  clientKey: string,
+  source: UploadSource,
+  filename: string,
+  sizeBytes: number,
+  mediaId: Id<'media'>,
+) {
+  const session = await convex.action(api.driveClient.getUploadSession, { clientKey });
+  const start = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Upload-Content-Type': source.mimeType,
+      'X-Upload-Content-Length': String(sizeBytes),
+    },
+    body: JSON.stringify({ name: filename, parents: [session.folderId] }),
+  });
+  const uploadUrl = start.headers.get('location');
+  if (!start.ok || !uploadUrl) throw new Error('Unable to start Google Drive upload');
+  if (Platform.OS === 'web') {
+    const body = source.webBody ?? (await (await fetch(source.uri)).blob());
+    const response = await fetch(uploadUrl, { method: 'PUT', headers: { Authorization: `Bearer ${session.accessToken}`, 'Content-Type': source.mimeType }, body });
+    const file = await response.json() as { id?: string; size?: string };
+    if (!response.ok || !file.id) throw new Error('Google Drive upload failed');
+    source.onProgress?.(1);
+    await convex.mutation(api.media.updateUploadProgress, { clientKey, id: mediaId, progress: 1 });
+    return { id: file.id, sizeBytes: Number(file.size ?? sizeBytes) };
+  }
+  const task = new ExpoFile(source.uri).createUploadTask(uploadUrl, {
+    httpMethod: 'PUT', uploadType: UploadType.BINARY_CONTENT, mimeType: source.mimeType,
+    headers: { Authorization: `Bearer ${session.accessToken}`, 'Content-Type': source.mimeType },
+    onProgress: ({ totalBytes, bytesSent }) => {
+      const progress = totalBytes > 0 ? bytesSent / totalBytes : 0;
+      source.onProgress?.(progress);
+      void convex.mutation(api.media.updateUploadProgress, { clientKey, id: mediaId, progress }).catch(() => undefined);
+    },
+  });
+  const response = await task.uploadAsync();
+  const file = JSON.parse(response.body) as { id?: string; size?: string };
+  if (response.status < 200 || response.status >= 300 || !file.id) throw new Error('Google Drive upload failed');
+  return { id: file.id, sizeBytes: Number(file.size ?? sizeBytes) };
+}
+
 async function complete(
   clientKey: string,
   source: UploadSource,
@@ -104,6 +148,11 @@ async function complete(
   )
     return mediaId;
   try {
+    const policy = await convex.query(api.storage.current, { clientKey });
+    if (policy.activeBackend === 'googleDrive') {
+      const uploaded = await sendDirectlyToDrive(clientKey, source, metadata.filename, metadata.sizeBytes, mediaId);
+      return await convex.mutation(api.media.completeDriveUpload, { clientKey, id: mediaId, providerObjectRef: uploaded.id, sizeBytes: uploaded.sizeBytes });
+    }
     const storageId = await sendToStorage(clientKey, source, mediaId);
     const thumbnail = await makeThumbnail(
       source.uri,

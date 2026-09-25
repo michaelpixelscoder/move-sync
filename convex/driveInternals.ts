@@ -101,6 +101,18 @@ export const getTransferDetails = internalQuery({
   },
 });
 
+export const getClientSession = internalQuery({
+  args: { clientKey: v.string(), userId: v.id('users') },
+  returns: v.union(v.object({ folderId: v.string(), encryptedAccessToken: v.union(v.string(), v.null()), encryptedRefreshToken: v.string(), accessTokenExpiresAt: v.union(v.number(), v.null()) }), v.null()),
+  handler: async (ctx, args) => {
+    const claim = await ctx.db.query('libraryClaims').withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey)).unique();
+    if (!claim || claim.userId !== args.userId) return null;
+    const connection = await ctx.db.query('driveConnections').withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey)).unique();
+    if (!connection) return null;
+    return { folderId: connection.folderId, encryptedAccessToken: connection.encryptedAccessToken ?? null, encryptedRefreshToken: connection.encryptedRefreshToken, accessTokenExpiresAt: connection.accessTokenExpiresAt ?? null };
+  },
+});
+
 export const saveAccessToken = internalMutation({
   args: { clientKey: v.string(), accessToken: v.string(), expiresAt: v.number() }, returns: v.null(),
   handler: async (ctx, args) => {

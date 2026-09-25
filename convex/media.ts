@@ -71,6 +71,7 @@ type SummaryMedia = Pick<
   | 'transferState'
   | 'sizeBytes'
   | 'syncedAt'
+  | 'activeBackend'
 >;
 
 function transferOf(media: SummaryMedia) {
@@ -93,7 +94,8 @@ function storageOf(media: SummaryMedia): {
   // A storage ID is written only by completeUpload, after the blob is verified.
   // Treat it as authoritative even if an older duplicate-upload attempt left the
   // legacy transfer state as `error`.
-  const cloudAvailable = Boolean(media.storageId);
+  const cloudAvailable = Boolean(media.storageId) ||
+    (media.activeBackend === 'googleDrive' && transferState === 'synced');
   const localAvailable = Boolean(media.localAssetId && !media.localRemovedAt);
   const safeToRemoveLocal = cloudAvailable && localAvailable;
   const state = cloudAvailable
@@ -1046,6 +1048,26 @@ export const completeUpload = mutation({
       await ctx.db.patch(device._id, { lastBackupAt: now, lastSeenAt: now });
     if (values.activeBackend === 'googleDrive') await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, { mediaId: id });
     return id;
+  },
+});
+
+export const completeDriveUpload = mutation({
+  args: { clientKey: v.string(), id: v.id('media'), providerObjectRef: v.string(), sizeBytes: v.number() },
+  returns: v.id('media'),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
+    const policy = await ctx.db.query('storagePolicies').withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey)).unique();
+    if (policy?.activeBackend !== 'googleDrive' || policy.driveConnectionState !== 'connected') throw new ConvexError('Google Drive is unavailable. Sync is paused.');
+    const now = Date.now();
+    const next = { ...media, activeBackend: 'googleDrive' as const, sizeBytes: args.sizeBytes, state: 'synced' as const, transferState: 'synced' as const, syncError: undefined, syncedAt: now, updatedAt: now };
+    await ctx.db.patch(media._id, { activeBackend: 'googleDrive', sizeBytes: args.sizeBytes, state: 'synced', transferState: 'synced', syncError: undefined, syncedAt: now, updatedAt: now });
+    const object = await ctx.db.query('storageObjects').withIndex('by_media_id_and_backend', (q) => q.eq('mediaId', media._id).eq('backend', 'googleDrive')).unique();
+    const values = { clientKey: args.clientKey, mediaId: media._id, backend: 'googleDrive' as const, providerObjectRef: args.providerObjectRef, sizeBytes: args.sizeBytes, state: 'available' as const, updatedAt: now };
+    if (object) await ctx.db.patch(object._id, values); else await ctx.db.insert('storageObjects', { ...values, createdAt: now });
+    await updateSummary(ctx, args.clientKey, media, next);
+    await setActivity(ctx, media, { state: 'completed', progress: 1, completedAt: now });
+    return media._id;
   },
 });
 
