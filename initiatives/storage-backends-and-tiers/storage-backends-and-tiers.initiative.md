@@ -1,6 +1,6 @@
 ---
 title: 'Storage backends and subscription tiers'
-status: planned
+status: in_progress
 owner: michael
 created: 2026-09-25
 updated: 2026-09-25
@@ -120,11 +120,11 @@ When a condition is met, pause the affected backend or pricing tier. Keep Convex
 
 | Milestone or task                           | Result                                                                                                               | Dependencies                                      | Status  | Completion check                                                                               |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| Define internal-test plan model             | Server-owned `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex` selection via Settings                 | Product decision                                  | pending | Client cannot choose a backend without the server-owned plan allowing it                       |
+| Define internal-test plan model             | Server-owned `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex` selection via Settings                 | Product decision                                  | complete | Client cannot choose a backend without the server-owned plan allowing it                       |
 | Drive feasibility prototype                 | One test account chooses a visible folder, writes, reads, deletes, revokes, reconnects, and detects a deleted folder | Google Cloud OAuth client and test Drive accounts | pending | Narrow-scope proof with documented scopes and durable token handling                           |
-| Define storage-object abstraction           | Provider-neutral metadata/lifecycle model, including active/inactive backend filtering                               | Architecture review                               | pending | No client receives a raw provider credential; old-backend media can be hidden without deletion |
-| Build Drive connection and Storage Settings | Connected account, folder selector, disconnect behavior, and reconnect/folder-repair actions                         | Drive prototype                                   | pending | Disconnect preserves Drive files; reconnect and folder selection work                          |
-| Add sidebar storage status                  | Drive total/used/remaining progress plus unavailable, revoked, expired, and missing-folder states                    | Drive connection and usage API                    | pending | Status is truthful and never instructs the client to delete local media                        |
+| Define storage-object abstraction           | Provider-neutral metadata/lifecycle model, including active/inactive backend filtering                               | Architecture review                               | complete | No client receives a raw provider credential; old-backend media can be hidden without deletion |
+| Build Drive connection and Storage Settings | Connected account, folder selector, disconnect behavior, and reconnect/folder-repair actions                         | Drive prototype                                   | in progress | Disconnect preserves Drive files; reconnect and folder selection work                          |
+| Add sidebar storage status                  | Drive total/used/remaining progress plus unavailable, revoked, expired, and missing-folder states                    | Drive connection and usage API                    | in progress | Status is truthful and never instructs the client to delete local media                        |
 | Build upload/playback/deletion paths        | End-to-end selected-backend upload, playback, retry, direct account deletion, and safe outage behavior               | Storage abstraction                               | pending | No fallback occurs; provider objects are deleted only by explicit account deletion             |
 | Add backend-filtered library views          | Plan/storage switch hides prior-backend media while retaining records and objects                                    | Storage abstraction                               | pending | Switching never deletes or cross-contaminates library data                                     |
 | Pilot and observe                           | Internal cohort validates connection, folder, quota, failure, and deletion flows                                     | All preceding tasks                               | pending | Failure and cost targets hold for the agreed observation window                                |
@@ -192,6 +192,7 @@ Track storage bytes, egress, failed uploads, provider-token failures, deletion r
 | 2026-09-25 | Select account-level Drive or Convex storage for internal testing | Use a Settings dropdown for `Free / Google Drive`, `Simple / Convex`, and `Premium / Convex`; it is not billing or a public subscription workflow.                                                                                                                               |
 | 2026-09-25 | Use a visible user-selected Google Drive folder                   | The Drive connection is distinct from login. Folder deletion, expired/revoked access, quota, and backend outages stop sync and are reported in sidebar storage status.                                                                                                           |
 | 2026-09-25 | Defer automatic migration                                         | A storage switch hides prior-backend media but retains metadata and objects. Account deletion directly deletes selected-backend objects; Drive disconnect leaves Drive files intact.                                                                                             |
+| 2026-09-25 | Begin narrow-scope Drive connection implementation                | The app uses a separate OAuth flow with `drive.file`, an app-managed visible `Move Sync` folder, server-only encrypted refresh tokens, and server-owned policy state. A future arbitrary existing-folder picker requires Google Picker configuration. |
 
 ## 10. Closure
 
