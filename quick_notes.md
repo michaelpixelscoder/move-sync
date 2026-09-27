@@ -1,6 +1,5 @@
 # Quick Notes
 
-
 ## Missing features
 
 - [ ] Implement user authentication

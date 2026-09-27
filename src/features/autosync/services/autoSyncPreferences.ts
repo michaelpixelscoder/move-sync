@@ -1,18 +1,15 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { readLocalConfig, writeLocalConfig } from '../../../lib/localConfig';
 
 const STORAGE_KEY = 'move-sync.auto-sync-collections.v1';
 const WIFI_ONLY_KEY = 'move-sync.wifi-only.v1';
 
 export async function readAutoSyncCollectionIds() {
-  const value = await AsyncStorage.getItem(STORAGE_KEY);
-  if (!value) return new Set<string>();
-
-  const parsed = JSON.parse(value);
-  if (!Array.isArray(parsed)) return new Set<string>();
-
-  return new Set(
-    parsed.filter((item): item is string => typeof item === 'string'),
+  const ids = await readLocalConfig(STORAGE_KEY, [] as string[], (value) =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : null,
   );
+  return new Set(ids);
 }
 
 export async function setAutoSyncCollectionId(
@@ -22,7 +19,7 @@ export async function setAutoSyncCollectionId(
   const enabledIds = await readAutoSyncCollectionIds();
   if (enabled) enabledIds.add(localId);
   else enabledIds.delete(localId);
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...enabledIds]));
+  await writeLocalConfig(STORAGE_KEY, [...enabledIds]);
 }
 
 export function applyAutoSyncPreferences<
@@ -35,9 +32,17 @@ export function applyAutoSyncPreferences<
 }
 
 export async function readWifiOnlyPreference() {
-  return (await AsyncStorage.getItem(WIFI_ONLY_KEY)) !== 'false';
+  return await readLocalConfig(WIFI_ONLY_KEY, true, (value) =>
+    typeof value === 'boolean'
+      ? value
+      : value === 'false'
+        ? false
+        : value === 'true'
+          ? true
+          : null,
+  );
 }
 
 export async function setWifiOnlyPreference(enabled: boolean) {
-  await AsyncStorage.setItem(WIFI_ONLY_KEY, String(enabled));
+  await writeLocalConfig(WIFI_ONLY_KEY, enabled);
 }

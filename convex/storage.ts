@@ -32,54 +32,39 @@ const policyValidator = v.object({
   message: v.string(),
 });
 
-function backendFor(plan: 'freeDrive' | 'simpleConvex' | 'premiumConvex') {
-  return plan === 'freeDrive' ? 'googleDrive' : 'convex';
-}
-function view(policy?: {
-  internalTestPlan: 'freeDrive' | 'simpleConvex' | 'premiumConvex';
-  activeBackend: 'convex' | 'googleDrive';
-  driveConnectionState:
-    | 'notConnected'
-    | 'connected'
-    | 'authorizationExpired'
-    | 'authorizationRevoked'
-    | 'folderMissing'
-    | 'unavailable';
-  driveAccountEmail?: string;
-  driveFolderId?: string;
-  driveFolderName?: string;
-  driveTotalBytes?: number;
-  driveUsedBytes?: number;
-  driveError?: string;
-} | null) {
-  const value = policy ?? {
-    internalTestPlan: 'simpleConvex' as const,
-    activeBackend: 'convex' as const,
-    driveConnectionState: 'notConnected' as const,
-  };
-  const usingDrive = value.activeBackend === 'googleDrive';
-  const canSync = !usingDrive || value.driveConnectionState === 'connected';
-  const message = !usingDrive
-    ? 'Managed Move Sync storage is active.'
-    : value.driveConnectionState === 'connected'
-      ? 'Your personal Google Drive quota is used for new backups.'
-      : value.driveConnectionState === 'folderMissing'
-        ? 'The selected Drive folder is missing. Choose a folder before syncing.'
-        : value.driveConnectionState === 'authorizationExpired' ||
-            value.driveConnectionState === 'authorizationRevoked'
-          ? 'Google Drive access needs to be reconnected before syncing.'
-          : value.driveError ?? 'Connect Google Drive before syncing. Move Sync will not fall back to managed storage.';
+function view(
+  _policy?: {
+    internalTestPlan: 'freeDrive' | 'simpleConvex' | 'premiumConvex';
+    activeBackend: 'convex' | 'googleDrive';
+    driveConnectionState:
+      | 'notConnected'
+      | 'connected'
+      | 'authorizationExpired'
+      | 'authorizationRevoked'
+      | 'folderMissing'
+      | 'unavailable';
+    driveAccountEmail?: string;
+    driveFolderId?: string;
+    driveFolderName?: string;
+    driveTotalBytes?: number;
+    driveUsedBytes?: number;
+    driveError?: string;
+  } | null,
+) {
+  // The October pilot has exactly one storage path. Retain the legacy policy
+  // record only for migration safety; it cannot select Drive for current users.
+  const activeBackend: 'convex' | 'googleDrive' = 'convex';
   return {
-    internalTestPlan: value.internalTestPlan,
-    activeBackend: value.activeBackend,
-    driveConnectionState: value.driveConnectionState,
-    driveAccountEmail: value.driveAccountEmail ?? null,
-    driveFolderName: value.driveFolderName ?? null,
-    driveTotalBytes: value.driveTotalBytes ?? null,
-    driveUsedBytes: value.driveUsedBytes ?? null,
-    driveError: value.driveError ?? null,
-    canSync,
-    message,
+    internalTestPlan: 'simpleConvex' as const,
+    activeBackend,
+    driveConnectionState: 'notConnected' as const,
+    driveAccountEmail: null,
+    driveFolderName: null,
+    driveTotalBytes: null,
+    driveUsedBytes: null,
+    driveError: null,
+    canSync: true,
+    message: 'Managed Move Sync storage is active.',
   };
 }
 
@@ -99,22 +84,22 @@ export const setInternalTestPlan = mutation({
   args: { clientKey: v.string(), plan: planValidator },
   returns: policyValidator,
   handler: async (ctx, args) => {
-    const activeBackend = backendFor(args.plan);
     const existing = await ctx.db
       .query('storagePolicies')
       .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
       .unique();
     const values = {
-      internalTestPlan: args.plan,
-      activeBackend,
-      driveConnectionState:
-        activeBackend === 'googleDrive'
-          ? (existing?.driveConnectionState ?? 'notConnected')
-          : (existing?.driveConnectionState ?? 'notConnected'),
+      internalTestPlan: 'simpleConvex' as const,
+      activeBackend: 'convex' as const,
+      driveConnectionState: 'notConnected' as const,
       updatedAt: Date.now(),
     } as const;
     if (existing) await ctx.db.patch(existing._id, values);
-    else await ctx.db.insert('storagePolicies', { clientKey: args.clientKey, ...values });
+    else
+      await ctx.db.insert('storagePolicies', {
+        clientKey: args.clientKey,
+        ...values,
+      });
     return view({ ...(existing ?? {}), ...values });
   },
 });
@@ -123,10 +108,12 @@ export const beginDriveConnection = mutation({
   args: { clientKey: v.string(), redirectTo: v.string() },
   returns: v.object({ authorizationUrl: v.string() }),
   handler: async (ctx, args) => {
-    if (!isAllowedRedirect(args.redirectTo)) throw new ConvexError('Invalid Google Drive redirect');
+    if (!isAllowedRedirect(args.redirectTo))
+      throw new ConvexError('Invalid Google Drive redirect');
     const clientId = process.env.AUTH_GOOGLE_ID;
     const siteUrl = process.env.CONVEX_SITE_URL;
-    if (!clientId || !siteUrl) throw new ConvexError('Google Drive connection is not configured');
+    if (!clientId || !siteUrl)
+      throw new ConvexError('Google Drive connection is not configured');
     const state = crypto.randomUUID();
     await ctx.db.insert('driveOAuthStates', {
       clientKey: args.clientKey,
@@ -139,7 +126,10 @@ export const beginDriveConnection = mutation({
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('redirect_uri', `${siteUrl}/drive/oauth/callback`);
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', 'openid email https://www.googleapis.com/auth/drive.file');
+    url.searchParams.set(
+      'scope',
+      'openid email https://www.googleapis.com/auth/drive.file',
+    );
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
     url.searchParams.set('state', state);
@@ -176,7 +166,11 @@ export const disconnectDrive = mutation({
       updatedAt: Date.now(),
     };
     if (existing) await ctx.db.patch(existing._id, values);
-    else await ctx.db.insert('storagePolicies', { clientKey: args.clientKey, ...values });
+    else
+      await ctx.db.insert('storagePolicies', {
+        clientKey: args.clientKey,
+        ...values,
+      });
     return view({ ...(existing ?? {}), ...values });
   },
 });
@@ -198,6 +192,10 @@ export const setDriveFolderForInternalTest = mutation({
       driveFolderName: args.folderName.trim(),
       updatedAt: Date.now(),
     });
-    return view({ ...existing, driveFolderId: args.folderId.trim(), driveFolderName: args.folderName.trim() });
+    return view({
+      ...existing,
+      driveFolderId: args.folderId.trim(),
+      driveFolderName: args.folderName.trim(),
+    });
   },
 });

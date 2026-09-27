@@ -5,8 +5,6 @@ import { api } from '../../../convex/_generated/api';
 import type { Screen } from '../../navigation/types';
 import { theme, textStyles } from '../../theme/tokens';
 import { productCopy } from '../../content/productCopy';
-import { ProgressBar } from '../ui/ProgressBar';
-import { formatBytes } from '../../lib/format';
 
 type Props = {
   clientKey: string;
@@ -26,7 +24,6 @@ export function AppNavigation({
     api.playlists.listRecent,
     desktop ? { clientKey, limit: 5 } : 'skip',
   );
-  const storage = useQuery(api.storage.current, { clientKey });
   const desktopItems = (
     <>
       <NavItem
@@ -143,30 +140,10 @@ export function AppNavigation({
             (pressed || hovered) && styles.capacityPressed,
           ]}
         >
-          <View
-            style={[
-              styles.capacityDot,
-              storage?.canSync === false && styles.capacityDotWarning,
-            ]}
-          />
+          <View style={styles.capacityDot} />
           <View style={styles.capacityCopy}>
-            <Text style={styles.capacityText}>
-              {storage?.activeBackend === 'googleDrive'
-                ? storage.canSync
-                  ? 'Google Drive connected'
-                  : 'Google Drive needs attention'
-                : 'Managed storage ready'}
-            </Text>
-            {storage?.activeBackend === 'googleDrive' &&
-            storage.driveTotalBytes !== null &&
-            storage.driveUsedBytes !== null ? (
-              <>
-                <Text style={styles.capacityMeta}>
-                  {formatBytes(Math.max(0, storage.driveTotalBytes - storage.driveUsedBytes))} remaining
-                </Text>
-                <ProgressBar value={storage.driveUsedBytes / storage.driveTotalBytes} />
-              </>
-            ) : null}
+            <Text style={styles.capacityText}>Move Sync cloud ready</Text>
+            <Text style={styles.capacityMeta}>Private video backups</Text>
           </View>
         </Pressable>
         <View style={styles.accountRow}>
@@ -318,7 +295,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: theme.color.success,
   },
-  capacityDotWarning: { backgroundColor: theme.color.warning },
   capacityText: { ...textStyles.status },
   capacityMeta: { ...textStyles.status, color: theme.color.textTertiary },
   capacityPressed: { backgroundColor: theme.color.surfacePressed },

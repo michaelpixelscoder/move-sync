@@ -16,7 +16,7 @@ test.describe('Move Sync web', () => {
     await expect(page.getByRole('heading', { name: 'Videos' })).toBeVisible();
     await page.waitForTimeout(700);
     await page.screenshot({
-      path: 'artifacts/desktop-library.png',
+      path: 'artifacts/screenshots/web/library-desktop.png',
       fullPage: true,
     });
     const cards = page.locator('[data-testid^="media-"]');
@@ -26,7 +26,10 @@ test.describe('Move Sync web', () => {
     await expect(page.getByText('Details')).toBeVisible();
     await expect(page.getByText('Backed up', { exact: true })).toBeVisible();
     await expect(page.getByText(/MB/).first()).toBeVisible();
-    await page.screenshot({ path: 'artifacts/web-player.png', fullPage: true });
+    await page.screenshot({
+      path: 'artifacts/screenshots/web/player-desktop.png',
+      fullPage: true,
+    });
     expect(pageErrors).toEqual([]);
   });
 
@@ -81,7 +84,7 @@ test.describe('Move Sync web', () => {
       page.getByText('Automatic backup is managed on your phone'),
     ).toBeVisible();
     await page.screenshot({
-      path: 'artifacts/desktop-autosync.png',
+      path: 'artifacts/screenshots/web/backup-desktop.png',
       fullPage: true,
     });
   });
@@ -136,7 +139,7 @@ test.describe('Move Sync web', () => {
     );
     expect(overflow).toBeLessThanOrEqual(1);
     await page.screenshot({
-      path: 'artifacts/mobile-library.png',
+      path: 'artifacts/screenshots/web/library-mobile.png',
       fullPage: true,
     });
     await page.getByRole('button', { name: 'Settings' }).click();

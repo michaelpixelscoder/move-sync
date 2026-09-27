@@ -52,9 +52,13 @@ export function PlayerScreen({
   const drivePlaybackUrl = item?.driveFileId
     ? `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? ''}/drive/media?id=${encodeURIComponent(item._id)}`
     : null;
-  const playerSource: VideoSource = item?.videoUrl ??
+  const playerSource: VideoSource =
+    item?.videoUrl ??
     (drivePlaybackUrl && authToken
-      ? { uri: drivePlaybackUrl, headers: { Authorization: `Bearer ${authToken}` } }
+      ? {
+          uri: drivePlaybackUrl,
+          headers: { Authorization: `Bearer ${authToken}` },
+        }
       : null);
   const player = useVideoPlayer(playerSource, (instance) => {
     instance.timeUpdateEventInterval = 0.5;
@@ -168,24 +172,26 @@ export function PlayerScreen({
               <Text style={styles.loadingText}>Loading video…</Text>
             </View>
           ) : null}
-          {Platform.OS === 'web' && media.driveFileId
-            ? createElement('iframe', {
-                title: titleFromFilename(media.filename),
-                src: `https://drive.google.com/file/d/${encodeURIComponent(media.driveFileId)}/preview`,
-                allow: 'autoplay; fullscreen',
-                style: { width: '100%', height: '100%', border: 0 },
-              })
-            : <VideoView
-                testID="video-player"
-                player={player}
-                style={styles.video}
-                contentFit="contain"
-                nativeControls
-                fullscreenOptions={{ enable: true }}
-                allowsPictureInPicture
-                startsPictureInPictureAutomatically={false}
-                onFirstFrameRender={() => setFirstFrameReady(true)}
-              />}
+          {Platform.OS === 'web' && media.driveFileId ? (
+            createElement('iframe', {
+              title: titleFromFilename(media.filename),
+              src: `https://drive.google.com/file/d/${encodeURIComponent(media.driveFileId)}/preview`,
+              allow: 'autoplay; fullscreen',
+              style: { width: '100%', height: '100%', border: 0 },
+            })
+          ) : (
+            <VideoView
+              testID="video-player"
+              player={player}
+              style={styles.video}
+              contentFit="contain"
+              nativeControls
+              fullscreenOptions={{ enable: true }}
+              allowsPictureInPicture
+              startsPictureInPictureAutomatically={false}
+              onFirstFrameRender={() => setFirstFrameReady(true)}
+            />
+          )}
           {playback.status === 'error' || (!isOnline && !firstFrameReady) ? (
             <View style={styles.recovery}>
               <Text style={styles.loadingText}>

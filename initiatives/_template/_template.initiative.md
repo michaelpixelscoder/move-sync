@@ -1,5 +1,5 @@
 ---
-title: ""
+title: ''
 status: proposed
 owner: michael
 created: YYYY-MM-DD
@@ -27,9 +27,9 @@ State precisely what problem this initiative solves before describing a solution
 
 List observable facts that would prove the initiative has achieved its intended outcome. Each measure needs a baseline, target, source, and measurement window.
 
-| Measure | Baseline | Target | Evidence source | Measurement window |
-| --- | --- | --- | --- | --- |
-| Example outcome | Current value | Required value | Where the value comes from | Dates or duration |
+| Measure         | Baseline      | Target         | Evidence source            | Measurement window |
+| --------------- | ------------- | -------------- | -------------------------- | ------------------ |
+| Example outcome | Current value | Required value | Where the value comes from | Dates or duration  |
 
 All required completion criteria:
 
@@ -91,9 +91,9 @@ Do not complete this section until the options have been evaluated against the p
 
 ## 6. Implementation plan
 
-| Milestone or task | Result | Dependencies | Status | Completion check |
-| --- | --- | --- | --- | --- |
-| First deliverable | Observable output | None | pending | How to verify it |
+| Milestone or task | Result            | Dependencies | Status  | Completion check |
+| ----------------- | ----------------- | ------------ | ------- | ---------------- |
+| First deliverable | Observable output | None         | pending | How to verify it |
 
 Allowed task statuses: `pending`, `active`, `blocked`, `completed`, `cancelled`.
 
@@ -142,8 +142,8 @@ Explain how to measure the real-world completion criteria after release. Softwar
 
 ## 9. Decision log
 
-| Date | Decision | Evidence and rationale |
-| --- | --- | --- |
+| Date       | Decision            | Evidence and rationale                |
+| ---------- | ------------------- | ------------------------------------- |
 | YYYY-MM-DD | Initiative proposed | Initial problem and evidence captured |
 
 ## 10. Closure

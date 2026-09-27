@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { useAuthToken } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
@@ -48,10 +48,16 @@ import {
 } from '../services/freeDeviceStorage';
 import { formatBytes } from '../../../lib/format';
 import { toCollectionReconcileInput } from '../services/reconcileDeviceCollections';
-import { foregroundSync, type ForegroundSyncStatus } from '../../../native/foregroundSync';
+import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { theme, textStyles } from '../../../theme/tokens';
+import {
+  foregroundSync,
+  type ForegroundSyncStatus,
+} from '../../../native/foregroundSync';
 
 export function BackupScreen({ clientKey }: { clientKey: string }) {
   const authToken = useAuthToken();
+  const isOnline = useOnlineStatus();
   const serverRows = useQuery(
     api.collections.list,
     Platform.OS === 'web' ? { clientKey } : 'skip',
@@ -78,14 +84,15 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   const [cleanupResult, setCleanupResult] = useState<string>();
   const [managingCollection, setManagingCollection] =
     useState<CollectionRecord>();
-  const [foregroundStatus, setForegroundStatus] = useState<ForegroundSyncStatus>({
-    supported: false,
-    running: false,
-    paused: false,
-    enabledCollections: [],
-    pending: 0,
-    uploaded: 0,
-  });
+  const [foregroundStatus, setForegroundStatus] =
+    useState<ForegroundSyncStatus>({
+      supported: false,
+      running: false,
+      paused: false,
+      enabledCollections: [],
+      pending: 0,
+      uploaded: 0,
+    });
   const rows = Platform.OS === 'web' ? serverRows : deviceRows;
   const reclaimable = reclaimablePages.results.flatMap((media) =>
     media.storage.safeToRemoveLocal && media.localAssetId
@@ -108,13 +115,9 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
       setRefreshing(true);
       setError(undefined);
       const collections = await readDeviceCollections();
-      const [enabledIds, playlistMap, reconciled] = await Promise.all([
+      const [enabledIds, playlistMap] = await Promise.all([
         readAutoSyncCollectionIds(),
         readCollectionPlaylistMap(),
-        reconcile({
-          clientKey,
-          collections: toCollectionReconcileInput(collections),
-        }),
       ]);
       const sizes = new Map(
         collections.map((collection) => [
@@ -122,6 +125,24 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
           collection.sizeBytes,
         ]),
       );
+      const localRows = applyCollectionPlaylistPreferences(
+        applyAutoSyncPreferences(
+          collections.map((collection) => ({
+            ...collection,
+            _id: collection.localId as Id<'collections'>,
+            autoSync: false,
+            isAvailable: true,
+          })),
+          enabledIds,
+        ),
+        playlistMap,
+      ).map((row) => ({ ...row, sizeBytes: sizes.get(row.localId) ?? 0 }));
+      setDeviceRows(localRows);
+      if (!isOnline) return;
+      const reconciled = await reconcile({
+        clientKey,
+        collections: toCollectionReconcileInput(collections),
+      });
       setDeviceRows(
         applyCollectionPlaylistPreferences(
           applyAutoSyncPreferences(reconciled, enabledIds),
@@ -143,14 +164,17 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
       void refresh();
       void readWifiOnlyPreference().then(setWifiOnly);
     }
-  }, [clientKey]);
+  }, [clientKey, isOnline]);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     let mounted = true;
     const readStatus = () =>
-      foregroundSync.getStatus().then((status) => {
-        if (mounted) setForegroundStatus(status);
-      }).catch(() => undefined);
+      foregroundSync
+        .getStatus()
+        .then((status) => {
+          if (mounted) setForegroundStatus(status);
+        })
+        .catch(() => undefined);
     void readStatus();
     const timer = setInterval(readStatus, 2_000);
     return () => {
@@ -254,6 +278,16 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
       ) : rows.length ? (
         <ScrollView contentContainerStyle={styles.scroll}>
           <ContentFrame width="compact" style={styles.content}>
+            {!isOnline ? (
+              <View style={styles.offlineNotice}>
+                <Text style={styles.offlineTitle}>You’re offline</Text>
+                <Text style={styles.offlineText}>
+                  You can still choose collections and update backup
+                  preferences. Your cloud library and playback need a
+                  connection.
+                </Text>
+              </View>
+            ) : null}
             <BackupSummary
               enabledCount={rows.filter((row) => row.autoSync).length}
               summary={summary}
@@ -275,7 +309,11 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
               rows={rows as CollectionRecord[]}
               busy={Boolean(syncing)}
               onChange={toggle}
-              onManagePlaylists={setManagingCollection}
+              onManagePlaylists={
+                isOnline
+                  ? setManagingCollection
+                  : () => setError('Reconnect to manage cloud playlists.')
+              }
             />
             {syncing ? <BackupSyncNotice name={syncing} /> : null}
             <BackupPreferences
@@ -296,7 +334,9 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         clientKey={clientKey}
         collection={managingCollection}
         onChange={updatePlaylists}
-        onPreferencesChanged={() => void refreshForegroundSync(clientKey, authToken)}
+        onPreferencesChanged={() =>
+          void refreshForegroundSync(clientKey, authToken)
+        }
         onClose={() => setManagingCollection(undefined)}
       />
       <FreeStorageConfirmation
@@ -313,4 +353,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   scroll: { flexGrow: 1 },
   content: { paddingBottom: 110 },
+  offlineNotice: {
+    padding: theme.space.md,
+    gap: theme.space.xxs,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.warningSubtle,
+  },
+  offlineTitle: { ...textStyles.cardTitle, color: theme.color.warning },
+  offlineText: textStyles.meta,
 });

@@ -1,4 +1,6 @@
 {
   "platforms": ["android"],
-  "android": { "modules": ["app.movesync.foregroundsync.MoveSyncForegroundSyncModule"] }
+  "android": {
+    "modules": ["app.movesync.foregroundsync.MoveSyncForegroundSyncModule"]
+  }
 }

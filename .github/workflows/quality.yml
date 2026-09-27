@@ -1,0 +1,33 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_PUBLIC_CONVEX_URL: https://disciplined-rat-188.convex.cloud
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run test:backend
+      - run: npm run test:web:landing
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots-and-playwright-results
+          path: |
+            artifacts/screenshots
+            test-results
+          if-no-files-found: ignore

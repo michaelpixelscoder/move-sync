@@ -1,5 +1,5 @@
 ---
-title: "Authentication and isolated user libraries"
+title: 'Authentication and isolated user libraries'
 status: exploring
 created: 2026-09-08
 updated: 2026-09-08
@@ -62,16 +62,16 @@ Introduce a `users` table keyed by a stable identity supplied by the authenticat
 
 Likely ownership relationships:
 
-| Record | Ownership |
-| --- | --- |
-| User profile | Authenticated identity |
-| Media | User; optionally originating device |
-| Playlist | User |
+| Record              | Ownership                                              |
+| ------------------- | ------------------------------------------------------ |
+| User profile        | Authenticated identity                                 |
+| Media               | User; optionally originating device                    |
+| Playlist            | User                                                   |
 | Playlist membership | Must connect media and playlist owned by the same user |
-| Device | User plus a stable installation identifier |
-| Device collection | User and device |
-| Library summary | User |
-| Backup activity | User and, when useful, device |
+| Device              | User plus a stable installation identifier             |
+| Device collection   | User and device                                        |
+| Library summary     | User                                                   |
+| Backup activity     | User and, when useful, device                          |
 
 Every public Convex function that reads or mutates private data should resolve the authenticated user internally. Record IDs supplied by a client must still be checked for ownership before use. Storage upload URLs, playback URLs, bulk operations, search, and playlist joins are part of the same boundary.
 
@@ -197,8 +197,8 @@ Before choosing a provider, answer whether existing `clientKey` data needs produ
 
 ## Decision log
 
-| Date | Decision | Reason |
-| --- | --- | --- |
-| 2026-09-08 | Exploration created | Replace device-held bearer keys with authenticated ownership so each user has a private, multi-device video library |
-| 2026-09-08 | Treat users and devices as separate entities | One account should be able to use several installations without conflating account ownership with device identity |
-| 2026-09-08 | Prefer a managed authentication approach for evaluation | Custom credentials and recovery would add unnecessary security-sensitive scope |
+| Date       | Decision                                                | Reason                                                                                                              |
+| ---------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-08 | Exploration created                                     | Replace device-held bearer keys with authenticated ownership so each user has a private, multi-device video library |
+| 2026-09-08 | Treat users and devices as separate entities            | One account should be able to use several installations without conflating account ownership with device identity   |
+| 2026-09-08 | Prefer a managed authentication approach for evaluation | Custom credentials and recovery would add unnecessary security-sensitive scope                                      |

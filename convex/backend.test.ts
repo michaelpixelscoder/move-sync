@@ -143,7 +143,7 @@ describe('Move Sync backend', () => {
     ).toContain(id);
   });
 
-  it('keeps storage selection server-owned, hides prior-backend media, and never falls back from Drive', async () => {
+  it('keeps the MVP storage path on managed Convex storage', async () => {
     const mediaId = await t.mutation(api.media.enqueue, {
       clientKey: ownerKey,
       localAssetId: 'managed-before-switch',
@@ -159,29 +159,9 @@ describe('Move Sync backend', () => {
     });
     const policy = await t.query(api.storage.current, { clientKey: ownerKey });
     expect(policy).toMatchObject({
-      internalTestPlan: 'freeDrive',
-      activeBackend: 'googleDrive',
-      canSync: false,
-    });
-    expect(
-      (
-        await t.query(api.media.listPage, {
-          clientKey: ownerKey,
-          filter: undefined,
-          sort: 'desc',
-          paginationOpts: { cursor: null, numItems: 10 },
-        })
-      ).page,
-    ).not.toContainEqual(expect.objectContaining({ _id: mediaId }));
-    await expect(
-      t.mutation(api.media.generateUploadUrl, {
-        clientKey: ownerKey,
-        id: mediaId,
-      }),
-    ).rejects.toThrow(/will not fall back/i);
-    await t.mutation(api.storage.setInternalTestPlan, {
-      clientKey: ownerKey,
-      plan: 'simpleConvex',
+      internalTestPlan: 'simpleConvex',
+      activeBackend: 'convex',
+      canSync: true,
     });
     expect(
       (

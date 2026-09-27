@@ -37,9 +37,11 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# browser-test output
-/artifacts
-/test-results
+# Generated verification artifacts
+/artifacts/
+/test-results/
+/playwright-report/
+/coverage/
 
 # generated native folders
 /ios

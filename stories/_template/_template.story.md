@@ -1,8 +1,8 @@
 ---
-title: ""
+title: ''
 observed_on: YYYY-MM-DD
 recorded_on: YYYY-MM-DD
-location: ""
+location: ''
 source: direct-observation
 confidence: high
 related_actors: []

@@ -1,5 +1,5 @@
 ---
-title: ""
+title: ''
 status: seed
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -52,6 +52,6 @@ Describe the smallest action that could reduce the most important uncertainty.
 
 ## Decision log
 
-| Date | Decision | Reason |
-| --- | --- | --- |
+| Date       | Decision                    | Reason           |
+| ---------- | --------------------------- | ---------------- |
 | YYYY-MM-DD | Initial exploration created | Capture the idea |

@@ -16,5 +16,11 @@ export default defineConfig({
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     },
   },
+  webServer: {
+    command: 'CI=1 npx expo start --web --port 8081',
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   reporter: [['list']],
 });

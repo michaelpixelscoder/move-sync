@@ -94,7 +94,8 @@ function storageOf(media: SummaryMedia): {
   // A storage ID is written only by completeUpload, after the blob is verified.
   // Treat it as authoritative even if an older duplicate-upload attempt left the
   // legacy transfer state as `error`.
-  const cloudAvailable = Boolean(media.storageId) ||
+  const cloudAvailable =
+    Boolean(media.storageId) ||
     (media.activeBackend === 'googleDrive' && transferState === 'synced');
   const localAvailable = Boolean(media.localAssetId && !media.localRemovedAt);
   const safeToRemoveLocal = cloudAvailable && localAvailable;
@@ -317,18 +318,27 @@ async function currentDevice(
     .unique();
 }
 
-async function activeBackendFor(ctx: Ctx, clientKey: string) {
-  const policy = await ctx.db
-    .query('storagePolicies')
-    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
-    .unique();
-  return policy?.activeBackend ?? 'convex';
+async function activeBackendFor(
+  ctx: Ctx,
+  clientKey: string,
+): Promise<'convex' | 'googleDrive'> {
+  // The Android MVP uses managed Convex storage only. Legacy Drive rows stay
+  // readable for migration work but cannot direct new upload/list behavior.
+  void ctx;
+  void clientKey;
+  return 'convex' as const;
 }
 
 export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
-  const driveObject = media.activeBackend === 'googleDrive'
-    ? await ctx.db.query('storageObjects').withIndex('by_media_id_and_backend', (q) => q.eq('mediaId', media._id).eq('backend', 'googleDrive')).unique()
-    : null;
+  const driveObject =
+    media.activeBackend === 'googleDrive'
+      ? await ctx.db
+          .query('storageObjects')
+          .withIndex('by_media_id_and_backend', (q) =>
+            q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+          )
+          .unique()
+      : null;
   const [videoUrl, thumbnailUrl, collection] = await Promise.all([
     media.storageId && !driveObject
       ? ctx.storage.getUrl(media.storageId)
@@ -361,7 +371,8 @@ export async function mediaView(ctx: Ctx, media: Doc<'media'>) {
     syncError: media.syncError ?? null,
     storage: storageOf(media),
     videoUrl,
-    driveFileId: driveObject?.state === 'available' ? driveObject.providerObjectRef : null,
+    driveFileId:
+      driveObject?.state === 'available' ? driveObject.providerObjectRef : null,
     thumbnailUrl,
     syncedAt: media.syncedAt ?? null,
     localRemovedAt: media.localRemovedAt ?? null,
@@ -520,7 +531,9 @@ export const listPage = query({
         await ctx.db
           .query('media')
           .withIndex('by_client_key_and_active_backend_and_created_at', (q) =>
-            q.eq('clientKey', args.clientKey).eq('activeBackend', activeBackend),
+            q
+              .eq('clientKey', args.clientKey)
+              .eq('activeBackend', activeBackend),
           )
           .order(sort)
           .paginate(args.paginationOpts),
@@ -534,7 +547,9 @@ export const listPage = query({
         await ctx.db
           .query('media')
           .withIndex('by_client_key_and_active_backend_and_created_at', (q) =>
-            q.eq('clientKey', args.clientKey).eq('activeBackend', 'googleDrive'),
+            q
+              .eq('clientKey', args.clientKey)
+              .eq('activeBackend', 'googleDrive'),
           )
           .order(sort)
           .paginate(args.paginationOpts),
@@ -1035,8 +1050,15 @@ export const completeUpload = mutation({
         updatedAt: now,
       };
       if (object) await ctx.db.patch(object._id, objectValues);
-      else await ctx.db.insert('storageObjects', { ...objectValues, createdAt: now });
-      if (values.activeBackend === 'googleDrive') await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, { mediaId: existing._id });
+      else
+        await ctx.db.insert('storageObjects', {
+          ...objectValues,
+          createdAt: now,
+        });
+      if (values.activeBackend === 'googleDrive')
+        await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, {
+          mediaId: existing._id,
+        });
       return existing._id;
     }
     const id = await ctx.db.insert('media', {
@@ -1066,27 +1088,77 @@ export const completeUpload = mutation({
     });
     if (device)
       await ctx.db.patch(device._id, { lastBackupAt: now, lastSeenAt: now });
-    if (values.activeBackend === 'googleDrive') await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, { mediaId: id });
+    if (values.activeBackend === 'googleDrive')
+      await ctx.scheduler.runAfter(0, internal.driveActions.copyStagedMedia, {
+        mediaId: id,
+      });
     return id;
   },
 });
 
 export const completeDriveUpload = mutation({
-  args: { clientKey: v.string(), id: v.id('media'), providerObjectRef: v.string(), sizeBytes: v.number() },
+  args: {
+    clientKey: v.string(),
+    id: v.id('media'),
+    providerObjectRef: v.string(),
+    sizeBytes: v.number(),
+  },
   returns: v.id('media'),
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
     const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
-    const policy = await ctx.db.query('storagePolicies').withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey)).unique();
-    if (policy?.activeBackend !== 'googleDrive' || policy.driveConnectionState !== 'connected') throw new ConvexError('Google Drive is unavailable. Sync is paused.');
+    const policy = await ctx.db
+      .query('storagePolicies')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
+      .unique();
+    if (
+      policy?.activeBackend !== 'googleDrive' ||
+      policy.driveConnectionState !== 'connected'
+    )
+      throw new ConvexError('Google Drive is unavailable. Sync is paused.');
     const now = Date.now();
-    const next = { ...media, activeBackend: 'googleDrive' as const, sizeBytes: args.sizeBytes, state: 'synced' as const, transferState: 'synced' as const, syncError: undefined, syncedAt: now, updatedAt: now };
-    await ctx.db.patch(media._id, { activeBackend: 'googleDrive', sizeBytes: args.sizeBytes, state: 'synced', transferState: 'synced', syncError: undefined, syncedAt: now, updatedAt: now });
-    const object = await ctx.db.query('storageObjects').withIndex('by_media_id_and_backend', (q) => q.eq('mediaId', media._id).eq('backend', 'googleDrive')).unique();
-    const values = { clientKey: args.clientKey, mediaId: media._id, backend: 'googleDrive' as const, providerObjectRef: args.providerObjectRef, sizeBytes: args.sizeBytes, state: 'available' as const, updatedAt: now };
-    if (object) await ctx.db.patch(object._id, values); else await ctx.db.insert('storageObjects', { ...values, createdAt: now });
+    const next = {
+      ...media,
+      activeBackend: 'googleDrive' as const,
+      sizeBytes: args.sizeBytes,
+      state: 'synced' as const,
+      transferState: 'synced' as const,
+      syncError: undefined,
+      syncedAt: now,
+      updatedAt: now,
+    };
+    await ctx.db.patch(media._id, {
+      activeBackend: 'googleDrive',
+      sizeBytes: args.sizeBytes,
+      state: 'synced',
+      transferState: 'synced',
+      syncError: undefined,
+      syncedAt: now,
+      updatedAt: now,
+    });
+    const object = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+      )
+      .unique();
+    const values = {
+      clientKey: args.clientKey,
+      mediaId: media._id,
+      backend: 'googleDrive' as const,
+      providerObjectRef: args.providerObjectRef,
+      sizeBytes: args.sizeBytes,
+      state: 'available' as const,
+      updatedAt: now,
+    };
+    if (object) await ctx.db.patch(object._id, values);
+    else await ctx.db.insert('storageObjects', { ...values, createdAt: now });
     await updateSummary(ctx, args.clientKey, media, next);
-    await setActivity(ctx, media, { state: 'completed', progress: 1, completedAt: now });
+    await setActivity(ctx, media, {
+      state: 'completed',
+      progress: 1,
+      completedAt: now,
+    });
     return media._id;
   },
 });

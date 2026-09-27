@@ -343,7 +343,13 @@ export function BackupServiceStatus({
   return (
     <View style={styles.service}>
       <StatusRow
-        icon={<Ionicons name="cloud-upload-outline" size={18} color={theme.color.accent} />}
+        icon={
+          <Ionicons
+            name="cloud-upload-outline"
+            size={18}
+            color={theme.color.accent}
+          />
+        }
         label="Background backup"
         value={message}
         tone={status.reason ? 'warning' : 'accent'}
@@ -353,8 +359,14 @@ export function BackupServiceStatus({
           Current: {status.currentFilename}
         </Text>
       ) : null}
-      {status.reason ? <Text style={styles.serviceError}>{status.reason}</Text> : null}
-      <Button label="Show backup notifications" tone="secondary" onPress={onEnableNotifications} />
+      {status.reason ? (
+        <Text style={styles.serviceError}>{status.reason}</Text>
+      ) : null}
+      <Button
+        label="Show backup notifications"
+        tone="secondary"
+        onPress={onEnableNotifications}
+      />
     </View>
   );
 }

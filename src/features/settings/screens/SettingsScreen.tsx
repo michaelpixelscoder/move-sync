@@ -1,6 +1,5 @@
 import {
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,10 +7,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAction, useMutation, useQuery } from 'convex/react';
-import { useState } from 'react';
-import { makeRedirectUri } from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { useAction, useQuery } from 'convex/react';
+import { useEffect, useState } from 'react';
 import { api } from '../../../../convex/_generated/api';
 import { theme, textStyles } from '../../../theme/tokens';
 import { productCopy } from '../../../content/productCopy';
@@ -22,11 +19,12 @@ import {
   SectionHeader,
 } from '../../../components/layout/PagePrimitives';
 import { Button } from '../../../components/ui/Button';
-import { ProgressBar } from '../../../components/ui/ProgressBar';
 import { SegmentedControl } from '../../../components/ui/SegmentedControl';
-import { formatBytes } from '../../../lib/format';
-
-WebBrowser.maybeCompleteAuthSession();
+import {
+  readDiagnosticsProfile,
+  setDiagnosticsProfile,
+  type DiagnosticsProfile,
+} from '../services/diagnosticsPreferences';
 
 export function SettingsScreen({
   clientKey,
@@ -40,45 +38,20 @@ export function SettingsScreen({
   onSignOut: () => Promise<void>;
 }) {
   const viewer = useQuery(api.viewer.current);
-  const storage = useQuery(api.storage.current, { clientKey });
-  const setPlan = useMutation(api.storage.setInternalTestPlan);
-  const beginDriveConnection = useMutation(api.storage.beginDriveConnection);
-  const disconnectDrive = useMutation(api.storage.disconnectDrive);
   const revokeOtherSessions = useAction(api.accounts.revokeOtherSessions);
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
-  const [connectingDrive, setConnectingDrive] = useState(false);
-  const [driveMessage, setDriveMessage] = useState<string | null>(null);
-
-  const connectDrive = async () => {
-    setConnectingDrive(true);
-    setDriveMessage(null);
-    try {
-      const redirectTo =
-        Platform.OS === 'web'
-          ? globalThis.location.origin
-          : makeRedirectUri({ scheme: 'move-sync' });
-      const { authorizationUrl } = await beginDriveConnection({
-        clientKey,
-        redirectTo,
-      });
-      if (Platform.OS === 'web') {
-        globalThis.location.assign(authorizationUrl);
-        return;
-      }
-      const result = await WebBrowser.openAuthSessionAsync(
-        authorizationUrl,
-        redirectTo,
-      );
-      if (result.type !== 'success') {
-        setDriveMessage('Google Drive connection was cancelled.');
-      }
-    } catch {
-      setDriveMessage('Unable to start the Google Drive connection. Try again.');
-    } finally {
-      setConnectingDrive(false);
-    }
+  const [diagnosticsProfile, setDiagnosticsProfileState] =
+    useState<DiagnosticsProfile>('none');
+  useEffect(() => {
+    void readDiagnosticsProfile().then(setDiagnosticsProfileState);
+  }, []);
+  const changeDiagnosticsProfile = (profile: DiagnosticsProfile) => {
+    setDiagnosticsProfileState(profile);
+    void setDiagnosticsProfile(profile).catch(() =>
+      setSessionMessage('Unable to save diagnostics preference. Try again.'),
+    );
   };
   return (
     <View style={styles.screen}>
@@ -118,103 +91,42 @@ export function SettingsScreen({
           <SectionHeader title="Storage" />
           <DetailPanel>
             <View style={styles.storageSection}>
-              <Text style={styles.title}>Internal test plan</Text>
+              <Text style={styles.title}>Move Sync cloud storage</Text>
               <Text style={styles.meta}>
-                These plans are for internal testing only. Google Drive uses the
-                connected account’s personal quota; it is not Move Sync cloud storage.
+                Your selected videos are backed up to your private Move Sync
+                library. Storage plans and external drives are not part of this
+                pilot.
+              </Text>
+            </View>
+          </DetailPanel>
+          <SectionHeader title="Diagnostics" />
+          <DetailPanel>
+            <View style={styles.storageSection}>
+              <Text style={styles.title}>Share backup diagnostics</Text>
+              <Text style={styles.meta}>
+                Choose what you want to share during this pilot. This setting
+                stays on this phone. Video content, names, locations, account
+                details, and tokens are never included.
               </Text>
               <SegmentedControl
-                label="Internal test plan"
-                value={storage?.internalTestPlan ?? 'simpleConvex'}
-                options={[
-                  { value: 'freeDrive', label: 'Free · Drive' },
-                  { value: 'simpleConvex', label: 'Simple' },
-                  { value: 'premiumConvex', label: 'Premium' },
-                ] as const}
-                onChange={(plan) => void setPlan({ clientKey, plan })}
+                label="Backup diagnostics"
+                value={diagnosticsProfile}
+                options={
+                  [
+                    { value: 'none', label: 'None' },
+                    { value: 'light', label: 'Light' },
+                    { value: 'detailed', label: 'Detailed' },
+                  ] as const
+                }
+                onChange={changeDiagnosticsProfile}
               />
-              <View style={styles.storageStatus}>
-                <View style={styles.icon}>
-                  <Ionicons
-                    name={storage?.activeBackend === 'googleDrive' ? 'logo-google' : 'cloud-outline'}
-                    size={21}
-                    color={storage?.canSync === false ? theme.color.warning : theme.color.accent}
-                  />
-                </View>
-                <View style={styles.copy}>
-                  <Text style={styles.title}>
-                    {storage?.activeBackend === 'googleDrive'
-                      ? 'Google Drive storage'
-                      : 'Managed Move Sync storage'}
-                  </Text>
-                  <Text accessibilityRole="alert" style={styles.meta}>
-                    {storage?.message ?? 'Managed Move Sync storage is active.'}
-                  </Text>
-                </View>
-              </View>
-              {storage?.activeBackend === 'googleDrive' ? (
-                <>
-                  {storage.driveTotalBytes !== null && storage.driveUsedBytes !== null ? (
-                    <View style={styles.quota}>
-                      <Text style={styles.meta}>
-                        {formatBytes(storage.driveUsedBytes)} used · {formatBytes(Math.max(0, storage.driveTotalBytes - storage.driveUsedBytes))} remaining
-                      </Text>
-                      <ProgressBar
-                        accessibilityLabel="Google Drive capacity"
-                        tone="accent"
-                        value={storage.driveTotalBytes ? storage.driveUsedBytes / storage.driveTotalBytes : 0}
-                      />
-                    </View>
-                  ) : null}
-                  <Text style={styles.meta}>
-                    {storage.driveAccountEmail
-                      ? `Connected as ${storage.driveAccountEmail}${storage.driveFolderName ? ` · ${storage.driveFolderName}` : ''}`
-                      : 'Connect a Google account to create your visible Move Sync folder.'}
-                  </Text>
-                  <View style={styles.folderRow}>
-                    <View style={styles.copy}>
-                      <Text style={styles.title}>Folder</Text>
-                      <Text style={styles.meta}>
-                        {storage.driveFolderName
-                          ? storage.driveFolderName
-                          : 'A visible “Move Sync” folder will be created after connection.'}
-                      </Text>
-                    </View>
-                    <Ionicons
-                      name="folder-outline"
-                      size={21}
-                      color={theme.color.textSecondary}
-                    />
-                  </View>
-                  {driveMessage ? (
-                    <Text accessibilityRole="alert" style={styles.meta}>
-                      {driveMessage}
-                    </Text>
-                  ) : null}
-                  {storage.driveConnectionState === 'connected' ? (
-                    <Button
-                      label="Disconnect Google Drive"
-                      icon="unlink-outline"
-                      tone="secondary"
-                      onPress={() => void disconnectDrive({ clientKey })}
-                    />
-                  ) : (
-                    <Button
-                      label={
-                        storage.driveConnectionState === 'authorizationExpired' ||
-                        storage.driveConnectionState === 'authorizationRevoked'
-                          ? 'Reconnect Google Drive'
-                          : 'Connect Google Drive'
-                      }
-                      icon="logo-google"
-                      tone="secondary"
-                      loading={connectingDrive}
-                      disabled={connectingDrive}
-                      onPress={() => void connectDrive()}
-                    />
-                  )}
-                </>
-              ) : null}
+              <Text style={styles.meta}>
+                {diagnosticsProfile === 'none'
+                  ? 'No optional backup diagnostics are collected.'
+                  : diagnosticsProfile === 'light'
+                    ? 'Daily totals only: number and size of videos, transfer speed, and success or failure.'
+                    : 'Per upload: date and time, size, speed, duration, resolution, format, and connection type.'}
+              </Text>
             </View>
           </DetailPanel>
           <SectionHeader title="Account" />
@@ -349,13 +261,5 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: theme.color.surfacePressed },
   accountActions: { gap: theme.space.md, padding: theme.space.md },
   storageSection: { gap: theme.space.md, padding: theme.space.md },
-  storageStatus: { gap: theme.space.sm, flexDirection: 'row', alignItems: 'center' },
-  quota: { gap: theme.space.xs },
-  folderRow: {
-    gap: theme.space.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: theme.space.xs,
-  },
   accountIdentity: { gap: theme.space.xxs },
 });

@@ -1,25 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Id } from '../../../../convex/_generated/dataModel';
+import { readLocalConfig, writeLocalConfig } from '../../../lib/localConfig';
 
 const STORAGE_KEY = 'move-sync.collection-playlists.v1';
 
 type PlaylistMap = Record<string, Id<'playlists'>[]>;
 
 async function readPlaylistMap(): Promise<PlaylistMap> {
-  const value = await AsyncStorage.getItem(STORAGE_KEY);
-  if (!value) return {};
-
-  const parsed = JSON.parse(value);
-  if (!parsed || typeof parsed !== 'object') return {};
-
-  const map: PlaylistMap = {};
-  for (const [localId, playlistIds] of Object.entries(parsed)) {
-    if (Array.isArray(playlistIds))
-      map[localId] = playlistIds.filter(
-        (id): id is Id<'playlists'> => typeof id === 'string',
-      );
-  }
-  return map;
+  return await readLocalConfig(STORAGE_KEY, {} as PlaylistMap, (value) => {
+    if (!value || typeof value !== 'object') return null;
+    const map: PlaylistMap = {};
+    for (const [localId, playlistIds] of Object.entries(value)) {
+      if (Array.isArray(playlistIds))
+        map[localId] = playlistIds.filter(
+          (id): id is Id<'playlists'> => typeof id === 'string',
+        );
+    }
+    return map;
+  });
 }
 
 export async function readCollectionPlaylistMap() {
@@ -33,7 +30,7 @@ export async function setCollectionPlaylistIds(
   const map = await readPlaylistMap();
   if (playlistIds.length) map[localId] = playlistIds;
   else delete map[localId];
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  await writeLocalConfig(STORAGE_KEY, map);
 }
 
 export function applyCollectionPlaylistPreferences<
