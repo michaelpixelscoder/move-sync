@@ -718,7 +718,14 @@ export const hasLocalAsset = query({
         q.eq('clientKey', args.clientKey).eq('localAssetId', args.localAssetId),
       )
       .unique();
-    return media ? storageOf(media).cloudAvailable : false;
+    if (!media) return false;
+    // A successful copy in one backend is not a copy in the currently selected
+    // backend. This lets a Drive migration back up the same local asset again
+    // without exposing the old backend in the active library.
+    return (
+      media.activeBackend === (await activeBackendFor(ctx, args.clientKey)) &&
+      storageOf(media).cloudAvailable
+    );
   },
 });
 /** Capacity is deliberately absent: Convex Storage usage is authoritative for used bytes,
@@ -776,9 +783,14 @@ export const enqueue = mutation({
           )
           .unique()
       : null;
-    if (existing && storageOf(existing).cloudAvailable) return existing._id;
     const now = Date.now();
     const activeBackend = await activeBackendFor(ctx, args.clientKey);
+    if (
+      existing &&
+      existing.activeBackend === activeBackend &&
+      storageOf(existing).cloudAvailable
+    )
+      return existing._id;
     const device = await currentDevice(
       ctx,
       args.clientKey,
@@ -799,6 +811,10 @@ export const enqueue = mutation({
       height: args.height,
       deviceId: device?._id,
       activeBackend,
+      // A verified object from an inactive backend must not be mistaken for a
+      // completed upload after a backend switch.
+      storageId: undefined,
+      thumbnailStorageId: undefined,
       state: 'queued' as const,
       transferState: 'queued' as const,
       syncError: undefined,

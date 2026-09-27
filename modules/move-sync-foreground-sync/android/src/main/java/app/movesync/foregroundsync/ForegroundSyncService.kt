@@ -34,21 +34,26 @@ class ForegroundSyncService : Service() {
     private const val KEY_CONFIG = "config"
     private const val KEY_PAUSED = "paused"
     private const val KEY_RUNNING = "running"
+    private const val KEY_PENDING = "pending"
+    private const val KEY_UPLOADED = "uploaded"
+    private const val KEY_FILENAME = "filename"
+    private const val KEY_ETA_SECONDS = "etaSeconds"
+    private const val KEY_REASON = "reason"
     fun saveConfig(context: Context, config: Map<String, Any?>) {
       val collections = JSONArray()
       (config["collections"] as? List<*>)?.forEach { raw ->
         val item = raw as? Map<*, *> ?: return@forEach
         collections.put(JSONObject().put("localId", item["localId"] as? String).put("collectionId", item["collectionId"] as? String).put("playlistIds", JSONArray(item["playlistIds"] as? List<*> ?: emptyList<String>())))
       }
-      val json = JSONObject().put("clientKey", config["clientKey"] as? String).put("convexUrl", config["convexUrl"] as? String).put("onlyOnWifi", config["onlyOnWifi"] as? Boolean ?: true).put("collections", collections)
+      val json = JSONObject().put("clientKey", config["clientKey"] as? String).put("authToken", config["authToken"] as? String).put("convexUrl", config["convexUrl"] as? String).put("backend", config["backend"] as? String ?: "convex").put("onlyOnWifi", config["onlyOnWifi"] as? Boolean ?: true).put("collections", collections)
       context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_CONFIG, json.toString()).apply()
     }
     fun saveWifiOverride(context: Context, value: Boolean?) { if (value != null) context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("wifiOverride", value).apply() }
-    fun status(context: Context): Map<String, Any> {
+    fun status(context: Context): Map<String, Any?> {
       val prefs = context.getSharedPreferences(PREFS, MODE_PRIVATE)
       val config = JSONObject(prefs.getString(KEY_CONFIG, "{}") ?: "{}")
       val ids = (0 until config.optJSONArray("collections")?.length().orZero()).map { config.getJSONArray("collections").getJSONObject(it).optString("localId") }
-      return mapOf("running" to prefs.getBoolean(KEY_RUNNING, false), "paused" to prefs.getBoolean(KEY_PAUSED, false), "enabledCollections" to ids, "pending" to 0, "uploaded" to 0)
+      return mapOf("running" to prefs.getBoolean(KEY_RUNNING, false), "paused" to prefs.getBoolean(KEY_PAUSED, false), "enabledCollections" to ids, "pending" to prefs.getInt(KEY_PENDING, 0), "uploaded" to prefs.getInt(KEY_UPLOADED, 0), "currentFilename" to prefs.getString(KEY_FILENAME, null), "estimatedSecondsRemaining" to prefs.getLong(KEY_ETA_SECONDS, 0), "reason" to prefs.getString(KEY_REASON, null))
     }
     private fun Int?.orZero() = this ?: 0
   }
@@ -104,10 +109,12 @@ class ForegroundSyncService : Service() {
         while (cursor.moveToNext() && candidates.size < 3) {
           val bucket = cursor.getString(1); val collection = byBucket[bucket] ?: continue
           val id = cursor.getLong(0); val changed = cursor.getLong(2); val size = cursor.getLong(3)
-          val key = "video:$id:$changed:$size"; if (store.isUploaded(key)) continue
+          // A record belongs to the currently selected storage backend. Switching
+          // from Convex to Drive deliberately creates a fresh backup there.
+          val key = "${cfg.optString("backend", "convex")}:video:$id:$changed:$size"; if (store.isUploaded(key)) continue
           candidates.add(MediaRow(key, Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString()), cursor.getString(4) ?: "video.mp4", cursor.getString(5) ?: "video/mp4", size, cursor.getLong(6), cursor.getLong(7), cursor.getInt(8), cursor.getInt(9), collection))
         }
-        pending = candidates.size; showNotification(if (pending == 0) "Backup is up to date" else "Uploading 0 of $pending"); emit("ForegroundSync:progress", mapOf("pending" to pending, "uploaded" to uploaded))
+        pending = candidates.size; persistProgress(); showNotification(if (pending == 0) "Backup is up to date" else "Preparing $pending video${if (pending == 1) "" else "s"}"); emit("ForegroundSync:progress", statusPayload())
         Log.i(TAG, "scan found candidates=${candidates.size}")
         candidates.forEachIndexed { index, row -> Log.i(TAG, "upload candidate=${row.filename} size=${row.size}"); upload(row, cfg, index) }
       }
@@ -117,7 +124,8 @@ class ForegroundSyncService : Service() {
   private fun upload(row: MediaRow, cfg: JSONObject, index: Int) {
     if (!store.claim(row.key, row.uri.toString())) return
     try {
-      showNotification("Uploading ${index + 1} of $pending")
+      val startedAt = SystemClock.elapsedRealtime()
+      prefs().edit().putString(KEY_FILENAME, row.filename).putString(KEY_REASON, null).apply(); showNotification("Uploading ${index + 1} of $pending: ${row.filename}")
       val args = JSONObject().put("clientKey", cfg.getString("clientKey")).put("collectionId", row.collection.getString("collectionId")).put("sourceCollectionLocalId", row.collection.getString("localId")).put("localAssetId", row.key).put("filename", row.filename).put("mimeType", row.mime).put("sizeBytes", row.size).put("durationMs", row.duration).put("createdAt", if (row.createdAt > 0) row.createdAt else System.currentTimeMillis()).put("width", row.width).put("height", row.height)
       val mediaId = mutation(cfg, "media:enqueue", args).toString()
       val uploadUrl = mutation(cfg, "media:generateUploadUrl", JSONObject().put("clientKey", cfg.getString("clientKey")).put("id", mediaId)).toString()
@@ -128,11 +136,14 @@ class ForegroundSyncService : Service() {
       val cloudId = mutation(cfg, "media:completeUpload", completion).toString()
       val playlists = row.collection.optJSONArray("playlistIds") ?: JSONArray()
       for (i in 0 until playlists.length()) mutation(cfg, "playlists:addMedia", JSONObject().put("clientKey", cfg.getString("clientKey")).put("playlistId", playlists.getString(i)).put("mediaIds", JSONArray().put(cloudId)))
-      store.uploaded(row.key, cloudId); uploaded++; pending--; showNotification(if (pending > 0) "Uploading ${index + 1} of ${index + 1 + pending}" else "Backup is up to date"); emit("ForegroundSync:uploaded", mapOf("localId" to row.key, "cloudId" to cloudId, "collectionLocalId" to row.collection.getString("localId"))); emit("ForegroundSync:progress", mapOf("pending" to pending, "uploaded" to uploaded))
-    } catch (error: Exception) { store.failed(row.key); showNotification("Upload failed; retrying later"); emit("ForegroundSync:error", mapOf("message" to (error.message ?: "Upload failed"), "code" to "UPLOAD_FAILED", "context" to row.key)) }
+      store.uploaded(row.key, cloudId); uploaded++; pending--;
+      val elapsedSeconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000L).coerceAtLeast(1L)
+      prefs().edit().putLong(KEY_ETA_SECONDS, elapsedSeconds * pending).apply()
+      persistProgress(); showNotification(if (pending > 0) "Uploaded $uploaded; $pending remaining (~${elapsedSeconds * pending}s)" else "Backup is up to date"); emit("ForegroundSync:uploaded", mapOf("localId" to row.key, "cloudId" to cloudId, "collectionLocalId" to row.collection.getString("localId"))); emit("ForegroundSync:progress", statusPayload())
+    } catch (error: Exception) { store.failed(row.key); prefs().edit().putString(KEY_REASON, error.message ?: "Upload failed").apply(); showNotification("Upload failed; retrying later"); emit("ForegroundSync:error", mapOf("message" to (error.message ?: "Upload failed"), "code" to "UPLOAD_FAILED", "context" to row.key)) }
   }
   private fun mutation(cfg: JSONObject, path: String, args: JSONObject): Any {
-    val connection = (URL(cfg.getString("convexUrl").trimEnd('/') + "/api/mutation").openConnection() as HttpURLConnection).apply { requestMethod = "POST"; doOutput = true; setRequestProperty("Content-Type", "application/json"); connectTimeout = 20_000; readTimeout = 60_000 }
+    val connection = (URL(cfg.getString("convexUrl").trimEnd('/') + "/api/mutation").openConnection() as HttpURLConnection).apply { requestMethod = "POST"; doOutput = true; setRequestProperty("Content-Type", "application/json"); cfg.optString("authToken").takeIf { it.isNotBlank() }?.let { setRequestProperty("Authorization", "Bearer $it") }; connectTimeout = 20_000; readTimeout = 60_000 }
     connection.outputStream.use { it.write(JSONObject().put("path", path).put("args", args).put("format", "convex_encoded_json").toString().toByteArray()) }
     val body = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream).bufferedReader().use { it.readText() }
     if (connection.responseCode !in 200..299) throw IllegalStateException("Convex $path failed: $body")
@@ -175,6 +186,8 @@ class ForegroundSyncService : Service() {
     return !config().optBoolean("onlyOnWifi", true) || caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
   }
   private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)
+  private fun persistProgress() = prefs().edit().putInt(KEY_PENDING, pending).putInt(KEY_UPLOADED, uploaded).apply()
+  private fun statusPayload() = mapOf("pending" to pending, "uploaded" to uploaded, "currentFilename" to prefs().getString(KEY_FILENAME, null), "estimatedSecondsRemaining" to prefs().getLong(KEY_ETA_SECONDS, 0), "reason" to prefs().getString(KEY_REASON, null))
   private fun emit(name: String, payload: Map<String, Any?>) { MoveSyncForegroundSyncModule.eventSink?.invoke(name, payload) }
   private fun config() = JSONObject(prefs().getString(KEY_CONFIG, "{}") ?: "{}")
   private fun createChannel() { (getSystemService(NotificationManager::class.java)).createNotificationChannel(NotificationChannel(CHANNEL, "Continuous backup", NotificationManager.IMPORTANCE_LOW)) }

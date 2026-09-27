@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useAuthToken } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { CollectionRecord } from '../../../types/domain';
@@ -30,6 +31,7 @@ import {
   BackupCollectionList,
   BackupPreferences,
   BackupSummary,
+  BackupServiceStatus,
   BackupSyncNotice,
   BackupWebNotice,
   FreeStorageConfirmation,
@@ -46,8 +48,10 @@ import {
 } from '../services/freeDeviceStorage';
 import { formatBytes } from '../../../lib/format';
 import { toCollectionReconcileInput } from '../services/reconcileDeviceCollections';
+import { foregroundSync, type ForegroundSyncStatus } from '../../../native/foregroundSync';
 
 export function BackupScreen({ clientKey }: { clientKey: string }) {
+  const authToken = useAuthToken();
   const serverRows = useQuery(
     api.collections.list,
     Platform.OS === 'web' ? { clientKey } : 'skip',
@@ -74,6 +78,14 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   const [cleanupResult, setCleanupResult] = useState<string>();
   const [managingCollection, setManagingCollection] =
     useState<CollectionRecord>();
+  const [foregroundStatus, setForegroundStatus] = useState<ForegroundSyncStatus>({
+    supported: false,
+    running: false,
+    paused: false,
+    enabledCollections: [],
+    pending: 0,
+    uploaded: 0,
+  });
   const rows = Platform.OS === 'web' ? serverRows : deviceRows;
   const reclaimable = reclaimablePages.results.flatMap((media) =>
     media.storage.safeToRemoveLocal && media.localAssetId
@@ -133,6 +145,20 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
     }
   }, [clientKey]);
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let mounted = true;
+    const readStatus = () =>
+      foregroundSync.getStatus().then((status) => {
+        if (mounted) setForegroundStatus(status);
+      }).catch(() => undefined);
+    void readStatus();
+    const timer = setInterval(readStatus, 2_000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, []);
+  useEffect(() => {
     if (reclaimablePages.status === 'CanLoadMore')
       reclaimablePages.loadMore(50);
   }, [reclaimablePages.status, reclaimablePages.loadMore]);
@@ -148,7 +174,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         ),
       );
       setSyncing(collection.name);
-      await refreshForegroundSync(clientKey);
+      await refreshForegroundSync(clientKey, authToken);
     } catch (value) {
       setError(
         value instanceof Error
@@ -174,7 +200,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
   const updateWifiOnly = (enabled: boolean) => {
     setWifiOnly(enabled);
     void setWifiOnlyPreference(enabled)
-      .then(() => refreshForegroundSync(clientKey))
+      .then(() => refreshForegroundSync(clientKey, authToken))
       .catch(() => {
         setWifiOnly(!enabled);
         setError('Unable to save the Wi-Fi preference.');
@@ -232,6 +258,12 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
               enabledCount={rows.filter((row) => row.autoSync).length}
               summary={summary}
             />
+            <BackupServiceStatus
+              status={foregroundStatus}
+              onEnableNotifications={() => {
+                void foregroundSync.requestNotificationPermission();
+              }}
+            />
             <ReclaimableStorageCard
               count={reclaimable.length}
               bytes={reclaimableBytes}
@@ -264,7 +296,7 @@ export function BackupScreen({ clientKey }: { clientKey: string }) {
         clientKey={clientKey}
         collection={managingCollection}
         onChange={updatePlaylists}
-        onPreferencesChanged={() => void refreshForegroundSync(clientKey)}
+        onPreferencesChanged={() => void refreshForegroundSync(clientKey, authToken)}
         onClose={() => setManagingCollection(undefined)}
       />
       <FreeStorageConfirmation

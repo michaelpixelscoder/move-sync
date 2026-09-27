@@ -1,11 +1,81 @@
 import { httpRouter } from 'convex/server';
+import { getAuthUserId } from '@convex-dev/auth/server';
 import { auth } from './auth';
 import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
+import { decryptDriveToken } from './driveCrypto';
 
 const http = httpRouter();
 
 auth.addHttpRoutes(http);
+
+/** Streams private Google Drive media while keeping provider credentials on the server. */
+http.route({
+  path: '/drive/media',
+  method: 'GET',
+  handler: httpAction(async (ctx, request) => {
+    const userId = await getAuthUserId(ctx);
+    const mediaId = new URL(request.url).searchParams.get('id');
+    if (!userId || !mediaId)
+      return new Response('Authentication required', { status: 401 });
+    try {
+      const details = await ctx.runQuery(internal.driveInternals.getPlaybackDetails, {
+        mediaId: mediaId as never,
+        userId,
+      });
+      if (!details) return new Response('Video not found', { status: 404 });
+      let accessToken = details.encryptedAccessToken
+        ? await decryptDriveToken(details.encryptedAccessToken)
+        : null;
+      if (!accessToken || (details.accessTokenExpiresAt ?? 0) < Date.now() + 30_000) {
+        const refreshed = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: process.env.AUTH_GOOGLE_ID ?? '',
+            client_secret: process.env.AUTH_GOOGLE_SECRET ?? '',
+            refresh_token: await decryptDriveToken(details.encryptedRefreshToken),
+            grant_type: 'refresh_token',
+          }),
+        });
+        const token = await refreshed.json() as { access_token?: string; expires_in?: number };
+        if (!refreshed.ok || !token.access_token)
+          return new Response('Google Drive authorization expired', { status: 401 });
+        accessToken = token.access_token;
+        await ctx.runMutation(internal.driveInternals.saveAccessToken, {
+          clientKey: details.clientKey,
+          accessToken,
+          expiresAt: Date.now() + (token.expires_in ?? 3600) * 1000,
+        });
+      }
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${accessToken}`,
+      };
+      const range = request.headers.get('range');
+      if (range) headers.Range = range;
+      const driveResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(details.providerObjectRef)}?alt=media`,
+        { headers },
+      );
+      const responseHeaders = new Headers({
+        'Cache-Control': 'private, no-store',
+        'Content-Type': driveResponse.headers.get('content-type') ?? details.mimeType,
+        'Accept-Ranges': driveResponse.headers.get('accept-ranges') ?? 'bytes',
+      });
+      for (const name of ['content-length', 'content-range']) {
+        const value = driveResponse.headers.get(name);
+        if (value) responseHeaders.set(name, value);
+      }
+      return new Response(driveResponse.body, {
+        status: driveResponse.status,
+        headers: responseHeaders,
+      });
+    } catch (error) {
+      console.error('Drive media playback failed:', error);
+      return new Response('Unable to stream video', { status: 502 });
+    }
+  }),
+});
 
 http.route({
   path: '/drive/oauth/callback',

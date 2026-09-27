@@ -112,7 +112,7 @@ describe('shared UI and formatters', () => {
         onLongPress={jest.fn()}
       />,
     );
-    expect(ui.getByLabelText('Thumbnail processing')).toBeTruthy();
+    expect(ui.getByLabelText('Thumbnail unavailable')).toBeTruthy();
     expect(ui.getByText('42%')).toBeTruthy();
     expect(ui.getByLabelText(/upload progress/i)).toBeTruthy();
     expect(ui.queryByText('1.5 MB')).toBeNull();

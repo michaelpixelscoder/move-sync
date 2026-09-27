@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useConvexAuth } from '@convex-dev/auth/react';
+import { useAuthToken, useConvexAuth } from '@convex-dev/auth/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -93,11 +93,12 @@ function AuthenticatedApp({
   const [screen, setScreen] = useState<Screen>({ name: 'videos' });
   const [navigationOpen, setNavigationOpen] = useState(false);
   const { clientKey, error } = useClientKey();
+  const authToken = useAuthToken();
   const claim = useLibraryClaim(clientKey);
   const claimedClientKey = claim.status === 'claimed' ? clientKey : undefined;
   useDevicePresence(claimedClientKey);
   useLibrarySummaryRebuild(claimedClientKey);
-  useAutoSync(claimedClientKey);
+  useAutoSync(claimedClientKey, authToken);
   useEffect(() => {
     if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
   }, [screen.name]);

@@ -9,7 +9,10 @@ export type ForegroundSyncCollection = {
 
 export type ForegroundSyncConfig = {
   clientKey: string;
+  /** Short-lived Convex session credential used only by the app's own service. */
+  authToken: string;
   convexUrl: string;
+  backend: 'convex' | 'googleDrive';
   onlyOnWifi: boolean;
   collections: ForegroundSyncCollection[];
 };
@@ -21,6 +24,8 @@ export type ForegroundSyncStatus = {
   enabledCollections: string[];
   pending: number;
   uploaded: number;
+  currentFilename?: string;
+  estimatedSecondsRemaining?: number;
   reason?: string;
 };
 
@@ -30,6 +35,7 @@ type NativeForegroundSync = {
   stop(): Promise<void>;
   getStatus(): Promise<Omit<ForegroundSyncStatus, 'supported'>>;
   setPaused(paused: boolean): Promise<void>;
+  requestNotificationPermission(): Promise<{ status?: string }>;
   addListener(
     event: string,
     listener: (event: unknown) => void,
@@ -73,6 +79,11 @@ export const foregroundSync = {
   async setPaused(paused: boolean) {
     if (Platform.OS === 'android' && nativeModule)
       await nativeModule.setPaused(paused);
+  },
+  async requestNotificationPermission() {
+    if (Platform.OS === 'android' && nativeModule)
+      return await nativeModule.requestNotificationPermission();
+    return { status: 'unavailable' };
   },
   async getStatus(): Promise<ForegroundSyncStatus> {
     if (Platform.OS === 'android' && nativeModule)

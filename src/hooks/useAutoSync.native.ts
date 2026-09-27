@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { refreshForegroundSync } from '../features/autosync/services/foregroundSync';
 
-export function useAutoSync(clientKey: string | undefined) {
+export function useAutoSync(
+  clientKey: string | undefined,
+  authToken?: string | null,
+) {
   const syncing = useRef(false);
 
   useEffect(() => {
@@ -11,7 +14,7 @@ export function useAutoSync(clientKey: string | undefined) {
       if (syncing.current) return;
       syncing.current = true;
       try {
-        await refreshForegroundSync(clientKey);
+        await refreshForegroundSync(clientKey, authToken);
       } catch (error) {
         console.warn('Unable to sync enabled collections', error);
       } finally {
@@ -29,5 +32,5 @@ export function useAutoSync(clientKey: string | undefined) {
     return () => {
       appStateSubscription.remove();
     };
-  }, [clientKey]);
+  }, [authToken, clientKey]);
 }

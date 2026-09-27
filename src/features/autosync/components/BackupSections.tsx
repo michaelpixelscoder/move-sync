@@ -313,6 +313,51 @@ export function BackupSyncNotice({ name }: { name: string }) {
     </View>
   );
 }
+export function BackupServiceStatus({
+  status,
+  onEnableNotifications,
+}: {
+  status: {
+    supported: boolean;
+    running: boolean;
+    paused: boolean;
+    pending: number;
+    uploaded: number;
+    currentFilename?: string;
+    estimatedSecondsRemaining?: number;
+    reason?: string;
+  };
+  onEnableNotifications: () => void;
+}) {
+  if (!status.supported) return null;
+  const eta = status.estimatedSecondsRemaining
+    ? ` About ${Math.ceil(status.estimatedSecondsRemaining / 60)} min remaining.`
+    : '';
+  const message = status.paused
+    ? 'Automatic backup is paused.'
+    : status.running
+      ? status.pending
+        ? `Backup service is running: ${status.uploaded} sent, ${status.pending} remaining.${eta}`
+        : 'Backup service is running and your selected collections are up to date.'
+      : 'Backup service is starting…';
+  return (
+    <View style={styles.service}>
+      <StatusRow
+        icon={<Ionicons name="cloud-upload-outline" size={18} color={theme.color.accent} />}
+        label="Background backup"
+        value={message}
+        tone={status.reason ? 'warning' : 'accent'}
+      />
+      {status.currentFilename ? (
+        <Text style={styles.serviceFilename} numberOfLines={1}>
+          Current: {status.currentFilename}
+        </Text>
+      ) : null}
+      {status.reason ? <Text style={styles.serviceError}>{status.reason}</Text> : null}
+      <Button label="Show backup notifications" tone="secondary" onPress={onEnableNotifications} />
+    </View>
+  );
+}
 const styles = StyleSheet.create({
   webNotice: {
     minHeight: 172,
@@ -386,6 +431,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: theme.color.surface,
   },
+  service: {
+    marginTop: theme.space.md,
+    padding: theme.space.md,
+    gap: theme.space.sm,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.surface,
+  },
+  serviceFilename: textStyles.meta,
+  serviceError: { ...textStyles.status, color: theme.color.warning },
   reclaimCard: {
     marginTop: theme.space.md,
     padding: theme.space.md,

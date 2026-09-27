@@ -13,7 +13,11 @@ import { readDeviceCollections } from './deviceCollections';
 import { toCollectionReconcileInput } from './reconcileDeviceCollections';
 
 /** Copies JS preferences into the native service's durable snapshot. */
-export async function refreshForegroundSync(clientKey: string) {
+export async function refreshForegroundSync(
+  clientKey: string,
+  authToken?: string | null,
+) {
+  const policy = await convex.query(api.storage.current, { clientKey });
   const [enabledIds, playlistMap, deviceCollections, onlyOnWifi] =
     await Promise.all([
       readAutoSyncCollectionIds(),
@@ -27,7 +31,9 @@ export async function refreshForegroundSync(clientKey: string) {
   if (!enabled.length) {
     await foregroundSync.configure({
       clientKey,
+      authToken: authToken ?? '',
       convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL ?? '',
+      backend: policy.activeBackend,
       onlyOnWifi,
       collections: [],
     });
@@ -44,7 +50,9 @@ export async function refreshForegroundSync(clientKey: string) {
   );
   await foregroundSync.configure({
     clientKey,
+    authToken: authToken ?? '',
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL ?? '',
+    backend: policy.activeBackend,
     onlyOnWifi,
     collections: collections.map((collection) => ({
       localId: collection.localId,

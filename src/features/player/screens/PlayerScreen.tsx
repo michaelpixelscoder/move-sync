@@ -1,8 +1,9 @@
 import { createElement, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import { useEvent } from 'expo';
 import { useMutation, useQuery } from 'convex/react';
+import { useAuthToken } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { MediaRecord } from '../../../types/domain';
@@ -36,6 +37,7 @@ export function PlayerScreen({
   onOpenNavigation?: () => void;
 }) {
   const item = useQuery(api.media.getById, { clientKey, id: mediaId });
+  const authToken = useAuthToken();
   const remove = useMutation(api.media.remove);
   const markLocalRemoved = useMutation(api.media.markLocalRemoved);
   const { isDesktop } = useResponsive();
@@ -47,13 +49,20 @@ export function PlayerScreen({
   const [error, setError] = useState<string>();
   const [firstFrameReady, setFirstFrameReady] = useState(false);
   const isOnline = useOnlineStatus();
-  const player = useVideoPlayer(item?.videoUrl ?? null, (instance) => {
+  const drivePlaybackUrl = item?.driveFileId
+    ? `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? ''}/drive/media?id=${encodeURIComponent(item._id)}`
+    : null;
+  const playerSource: VideoSource = item?.videoUrl ??
+    (drivePlaybackUrl && authToken
+      ? { uri: drivePlaybackUrl, headers: { Authorization: `Bearer ${authToken}` } }
+      : null);
+  const player = useVideoPlayer(playerSource, (instance) => {
     instance.timeUpdateEventInterval = 0.5;
   });
   const playback = useEvent(player, 'statusChange', { status: player.status });
   if (item === undefined) return <LoadingState label="Opening video…" />;
   const media = item as MediaRecord;
-  if (!media.videoUrl && !media.driveFileId)
+  if (!playerSource && !media.driveFileId)
     return (
       <ErrorState
         message="The cloud video file is unavailable."
@@ -187,7 +196,7 @@ export function PlayerScreen({
                 accessibilityLabel="Retry video playback"
                 onPress={() => {
                   setFirstFrameReady(false);
-                  player.replace(media.videoUrl);
+                  player.replace(playerSource);
                 }}
                 style={styles.retry}
               >

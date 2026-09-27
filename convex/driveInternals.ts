@@ -113,6 +113,51 @@ export const getClientSession = internalQuery({
   },
 });
 
+/** Resolves a private Drive object only after the caller proves library ownership. */
+export const getPlaybackDetails = internalQuery({
+  args: { mediaId: v.id('media'), userId: v.id('users') },
+  returns: v.union(
+    v.object({
+      clientKey: v.string(),
+      providerObjectRef: v.string(),
+      mimeType: v.string(),
+      encryptedAccessToken: v.union(v.string(), v.null()),
+      encryptedRefreshToken: v.string(),
+      accessTokenExpiresAt: v.union(v.number(), v.null()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (!media || media.activeBackend !== 'googleDrive') return null;
+    const claim = await ctx.db
+      .query('libraryClaims')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', media.clientKey))
+      .unique();
+    if (!claim || claim.userId !== args.userId) return null;
+    const object = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+      )
+      .unique();
+    if (!object || object.state !== 'available') return null;
+    const connection = await ctx.db
+      .query('driveConnections')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', media.clientKey))
+      .unique();
+    if (!connection) return null;
+    return {
+      clientKey: media.clientKey,
+      providerObjectRef: object.providerObjectRef,
+      mimeType: media.mimeType,
+      encryptedAccessToken: connection.encryptedAccessToken ?? null,
+      encryptedRefreshToken: connection.encryptedRefreshToken,
+      accessTokenExpiresAt: connection.accessTokenExpiresAt ?? null,
+    };
+  },
+});
+
 export const saveAccessToken = internalMutation({
   args: { clientKey: v.string(), accessToken: v.string(), expiresAt: v.number() }, returns: v.null(),
   handler: async (ctx, args) => {
