@@ -62,9 +62,15 @@ the original file, but it does not provide an official HLS/DASH manifest or
 Google's adaptive renditions. Assigning a fetched response to a Blob object URL
 downloads the entire file first.
 
-For no-full-download web playback, use `MediaSource` and request ranges from
-`alt=media`. This only works straightforwardly for media prepared as fragmented
-MP4/WebM chunks supported by the browser. Ordinary upload MP4 files need MP4
-parsing/transmuxing and careful buffering/seek/error handling; this is a
-separate player project. A production alternative is to store prepared HLS/DASH
-assets behind a streaming origin/CDN.
+The web implementation uses a browser service worker as an authenticated
+range-request bridge. The native HTML video element requests a same-origin
+temporary URL; the worker adds the OAuth bearer token and forwards every
+`Range` request directly to `files.get?alt=media`. This retains normal
+progressive loading and seeking without downloading the full file first and
+without sending media through Convex. The token is held only in the browser
+session and is never placed in the URL.
+
+`MediaSource` is not required for this progressive-file approach. It would be
+needed for a custom adaptive player, but Drive does not provide an official
+HLS/DASH manifest; ordinary MP4 files would then need parsing/transmuxing and
+careful buffering/seek/error handling.

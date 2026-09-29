@@ -1,9 +1,8 @@
-import { createElement, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import { useEvent } from 'expo';
 import { useMutation, useQuery } from 'convex/react';
-import { useAuthToken } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import type { MediaRecord } from '../../../types/domain';
@@ -24,6 +23,13 @@ import {
 } from '../components/PlayerActionMenu';
 import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { Button } from '../../../components/ui/Button';
+import {
+  connectGoogleDriveForPlayback,
+  directDrivePlaybackSource,
+  DrivePlaybackError,
+  type DirectDrivePlaybackSource,
+} from '../services/drivePlayback';
 
 export function PlayerScreen({
   clientKey,
@@ -37,7 +43,6 @@ export function PlayerScreen({
   onOpenNavigation?: () => void;
 }) {
   const item = useQuery(api.media.getById, { clientKey, id: mediaId });
-  const authToken = useAuthToken();
   const remove = useMutation(api.media.remove);
   const markLocalRemoved = useMutation(api.media.markLocalRemoved);
   const { isDesktop } = useResponsive();
@@ -48,22 +53,120 @@ export function PlayerScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [firstFrameReady, setFirstFrameReady] = useState(false);
+  const [driveSource, setDriveSource] =
+    useState<DirectDrivePlaybackSource | null>(null);
+  const [driveStatus, setDriveStatus] = useState<
+    'idle' | 'loading' | 'ready' | 'reconnect' | 'configuration' | 'unavailable'
+  >('idle');
+  const [driveMessage, setDriveMessage] = useState<string>();
+  const [driveReload, setDriveReload] = useState(0);
   const isOnline = useOnlineStatus();
-  const drivePlaybackUrl = item?.driveFileId
-    ? `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? ''}/drive/media?id=${encodeURIComponent(item._id)}`
-    : null;
-  const playerSource: VideoSource =
-    item?.videoUrl ??
-    (drivePlaybackUrl && authToken
-      ? {
-          uri: drivePlaybackUrl,
-          headers: { Authorization: `Bearer ${authToken}` },
-        }
-      : null);
-  const player = useVideoPlayer(playerSource, (instance) => {
+  const playerSource = useMemo<VideoSource>(
+    () =>
+      item?.videoUrl ??
+      (driveSource
+        ? driveSource.headers
+          ? { uri: driveSource.uri, headers: driveSource.headers }
+          : driveSource.uri
+        : null),
+    [driveSource, item?.videoUrl],
+  );
+  const player = useVideoPlayer(null, (instance) => {
     instance.timeUpdateEventInterval = 0.5;
   });
   const playback = useEvent(player, 'statusChange', { status: player.status });
+  useEffect(() => {
+    player.replace(playerSource);
+    setFirstFrameReady(false);
+  }, [player, playerSource]);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !navigator.serviceWorker) return;
+    const onWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== 'drive-stream-authorization-error') return;
+      setDriveSource((source) => {
+        source?.dispose();
+        return null;
+      });
+      setDriveStatus('reconnect');
+      setDriveMessage(
+        'Your Google Drive session expired. Connect Google Drive to continue playing this video.',
+      );
+    };
+    navigator.serviceWorker.addEventListener('message', onWorkerMessage);
+    return () =>
+      navigator.serviceWorker.removeEventListener('message', onWorkerMessage);
+  }, []);
+  useEffect(() => {
+    const fileId = item?.driveFileId;
+    let current = true;
+    let source: DirectDrivePlaybackSource | null = null;
+    if (!fileId) {
+      setDriveSource(null);
+      setDriveStatus('idle');
+      setDriveMessage(undefined);
+      return;
+    }
+    setDriveSource(null);
+    setDriveStatus('loading');
+    setDriveMessage(undefined);
+    void directDrivePlaybackSource(fileId)
+      .then((result) => {
+        source = result;
+        if (!current) return result.dispose();
+        setDriveSource(result);
+        setDriveStatus('ready');
+      })
+      .catch((value: unknown) => {
+        if (!current) return;
+        const driveError =
+          value instanceof DrivePlaybackError
+            ? value
+            : new DrivePlaybackError(
+                'reconnect',
+                'Google Drive could not prepare this video. Sign in again to continue.',
+              );
+        setDriveStatus(
+          driveError.kind === 'configuration' ||
+            driveError.kind === 'unavailable'
+            ? driveError.kind
+            : 'reconnect',
+        );
+        setDriveMessage(driveError.message);
+      });
+    return () => {
+      current = false;
+      source?.dispose();
+    };
+  }, [driveReload, item?.driveFileId]);
+  useEffect(() => {
+    if (
+      !item?.driveFileId ||
+      playback.status !== 'error' ||
+      !driveSource
+    )
+      return;
+    driveSource.dispose();
+    setDriveSource(null);
+    setDriveStatus('reconnect');
+    setDriveMessage(
+      'Google Drive could no longer authorize playback. Connect Google Drive, then try again.',
+    );
+  }, [driveSource, item?.driveFileId, playback.status]);
+  const reconnectDrive = async () => {
+    try {
+      setDriveStatus('loading');
+      setDriveMessage(undefined);
+      await connectGoogleDriveForPlayback();
+      setDriveReload((value) => value + 1);
+    } catch (value) {
+      const message =
+        value instanceof DrivePlaybackError
+          ? value.message
+          : 'Google Drive sign-in did not finish. Please try again.';
+      setDriveStatus('reconnect');
+      setDriveMessage(message);
+    }
+  };
   if (item === undefined) return <LoadingState label="Opening video…" />;
   const media = item as MediaRecord;
   if (!playerSource && !media.driveFileId)
@@ -172,13 +275,26 @@ export function PlayerScreen({
               <Text style={styles.loadingText}>Loading video…</Text>
             </View>
           ) : null}
-          {Platform.OS === 'web' && media.driveFileId ? (
-            createElement('iframe', {
-              title: titleFromFilename(media.filename),
-              src: `https://drive.google.com/file/d/${encodeURIComponent(media.driveFileId)}/preview`,
-              allow: 'autoplay; fullscreen',
-              style: { width: '100%', height: '100%', border: 0 },
-            })
+          {media.driveFileId && !playerSource ? (
+            <View style={styles.driveConnection}>
+              <Text style={styles.loadingText}>
+                {driveStatus === 'loading'
+                  ? Platform.OS === 'web'
+                    ? 'Preparing your private Drive video…'
+                    : 'Connecting directly to Google Drive…'
+                  : (driveMessage ?? 'Google Drive needs to be connected.')}
+              </Text>
+              {driveStatus !== 'loading' &&
+              driveStatus !== 'configuration' &&
+              driveStatus !== 'unavailable' ? (
+                <Button
+                  label="Connect Google Drive"
+                  icon="logo-google"
+                  tone="secondary"
+                  onPress={() => void reconnectDrive()}
+                />
+              ) : null}
+            </View>
           ) : (
             <VideoView
               testID="video-player"
@@ -293,6 +409,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.mediaCanvas,
   },
   loadingText: textStyles.meta,
+  driveConnection: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.space.md,
+    padding: theme.space.lg,
+    backgroundColor: theme.color.mediaCanvas,
+  },
   recovery: {
     ...StyleSheet.absoluteFill,
     zIndex: 2,
