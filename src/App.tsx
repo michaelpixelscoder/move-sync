@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthToken, useConvexAuth } from '@convex-dev/auth/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useMutation, useQuery } from 'convex/react';
@@ -95,10 +95,32 @@ function AuthenticatedApp({
   const { clientKey, error } = useClientKey();
   const authToken = useAuthToken();
   const claim = useLibraryClaim(clientKey);
+  const ensureGoogleDriveDefault = useMutation(
+    api.storage.ensureGoogleDriveDefault,
+  );
   const claimedClientKey = claim.status === 'claimed' ? clientKey : undefined;
+  const storagePolicy = useQuery(
+    api.storage.current,
+    claimedClientKey ? { clientKey: claimedClientKey } : 'skip',
+  );
+  const askedForDriveConnection = useRef(false);
   useDevicePresence(claimedClientKey);
   useLibrarySummaryRebuild(claimedClientKey);
   useAutoSync(claimedClientKey, authToken);
+  useEffect(() => {
+    if (!claimedClientKey) return;
+    void ensureGoogleDriveDefault({ clientKey: claimedClientKey });
+  }, [claimedClientKey, ensureGoogleDriveDefault]);
+  useEffect(() => {
+    if (
+      askedForDriveConnection.current ||
+      storagePolicy?.activeBackend !== 'googleDrive' ||
+      storagePolicy.driveConnectionState === 'connected'
+    )
+      return;
+    askedForDriveConnection.current = true;
+    setScreen({ name: 'settings' });
+  }, [storagePolicy]);
   useEffect(() => {
     if (Platform.OS === 'web') globalThis.scrollTo?.(0, 0);
   }, [screen.name]);

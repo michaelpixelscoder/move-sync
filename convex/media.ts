@@ -322,11 +322,11 @@ async function activeBackendFor(
   ctx: Ctx,
   clientKey: string,
 ): Promise<'convex' | 'googleDrive'> {
-  // The Android MVP uses managed Convex storage only. Legacy Drive rows stay
-  // readable for migration work but cannot direct new upload/list behavior.
-  void ctx;
-  void clientKey;
-  return 'convex' as const;
+  const policy = await ctx.db
+    .query('storagePolicies')
+    .withIndex('by_client_key', (q) => q.eq('clientKey', clientKey))
+    .unique();
+  return policy?.activeBackend ?? 'googleDrive';
 }
 
 export async function mediaView(ctx: Ctx, media: Doc<'media'>) {

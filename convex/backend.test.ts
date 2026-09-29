@@ -38,6 +38,13 @@ describe('Move Sync backend', () => {
     );
   }
 
+  async function useManagedConvexStorage() {
+    await t.mutation(api.storage.setInternalTestPlan, {
+      clientKey: ownerKey,
+      plan: 'simpleConvex',
+    });
+  }
+
   it('allows one authenticated user to claim a library exactly once', async () => {
     const claimKey = 'claim-cf88603d-d39b-4f56-aa02-e7d4d8afc96d';
     const [firstUserId, secondUserId] = await t.run(async (ctx) => [
@@ -73,6 +80,7 @@ describe('Move Sync backend', () => {
   });
 
   it('drives a media item through queued to synced with authoritative storage metadata', async () => {
+    await useManagedConvexStorage();
     const metadata = {
       clientKey: ownerKey,
       localAssetId: 'device-video-42',
@@ -143,7 +151,7 @@ describe('Move Sync backend', () => {
     ).toContain(id);
   });
 
-  it('keeps the MVP storage path on managed Convex storage', async () => {
+  it('defaults storage to Google Drive and pauses backup until it is connected', async () => {
     const mediaId = await t.mutation(api.media.enqueue, {
       clientKey: ownerKey,
       localAssetId: 'managed-before-switch',
@@ -159,9 +167,10 @@ describe('Move Sync backend', () => {
     });
     const policy = await t.query(api.storage.current, { clientKey: ownerKey });
     expect(policy).toMatchObject({
-      internalTestPlan: 'simpleConvex',
-      activeBackend: 'convex',
-      canSync: true,
+      internalTestPlan: 'freeDrive',
+      activeBackend: 'googleDrive',
+      driveConnectionState: 'notConnected',
+      canSync: false,
     });
     expect(
       (
@@ -231,6 +240,7 @@ describe('Move Sync backend', () => {
   });
 
   it('derives independent local and cloud storage facts and never permits premature local removal', async () => {
+    await useManagedConvexStorage();
     const metadata = {
       clientKey: ownerKey,
       localAssetId: 'safety-video',
@@ -281,6 +291,7 @@ describe('Move Sync backend', () => {
   });
 
   it('persists retryable activity and summary aggregates without client-side reductions', async () => {
+    await useManagedConvexStorage();
     const metadata = {
       clientKey: ownerKey,
       localAssetId: 'activity-video',
@@ -332,6 +343,7 @@ describe('Move Sync backend', () => {
   });
 
   it('paginates indexed library discovery and preserves the stable collection relation', async () => {
+    await useManagedConvexStorage();
     const [camera] = await t.mutation(api.collections.reconcile, {
       clientKey: ownerKey,
       collections: [

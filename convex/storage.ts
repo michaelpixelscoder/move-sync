@@ -51,20 +51,26 @@ function view(
     driveError?: string;
   } | null,
 ) {
-  // The October pilot has exactly one storage path. Retain the legacy policy
-  // record only for migration safety; it cannot select Drive for current users.
-  const activeBackend: 'convex' | 'googleDrive' = 'convex';
+  const activeBackend = _policy?.activeBackend ?? ('googleDrive' as const);
+  const driveConnectionState =
+    _policy?.driveConnectionState ?? ('notConnected' as const);
+  const connected = driveConnectionState === 'connected';
   return {
-    internalTestPlan: 'simpleConvex' as const,
+    internalTestPlan: _policy?.internalTestPlan ?? ('freeDrive' as const),
     activeBackend,
-    driveConnectionState: 'notConnected' as const,
-    driveAccountEmail: null,
-    driveFolderName: null,
-    driveTotalBytes: null,
-    driveUsedBytes: null,
-    driveError: null,
-    canSync: true,
-    message: 'Managed Move Sync storage is active.',
+    driveConnectionState,
+    driveAccountEmail: _policy?.driveAccountEmail ?? null,
+    driveFolderName: _policy?.driveFolderName ?? null,
+    driveTotalBytes: _policy?.driveTotalBytes ?? null,
+    driveUsedBytes: _policy?.driveUsedBytes ?? null,
+    driveError: _policy?.driveError ?? null,
+    canSync: activeBackend === 'convex' || connected,
+    message:
+      activeBackend === 'googleDrive'
+        ? connected
+          ? 'Google Drive is connected and ready for backup.'
+          : 'Connect Google Drive before backing up videos.'
+        : 'Managed Move Sync storage is active.',
   };
 }
 
@@ -89,11 +95,42 @@ export const setInternalTestPlan = mutation({
       .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
       .unique();
     const values = {
-      internalTestPlan: 'simpleConvex' as const,
-      activeBackend: 'convex' as const,
-      driveConnectionState: 'notConnected' as const,
+      internalTestPlan: args.plan,
+      activeBackend:
+        args.plan === 'freeDrive' ? ('googleDrive' as const) : ('convex' as const),
+      driveConnectionState: existing?.driveConnectionState ?? ('notConnected' as const),
       updatedAt: Date.now(),
-    } as const;
+    };
+    if (existing) await ctx.db.patch(existing._id, values);
+    else
+      await ctx.db.insert('storagePolicies', {
+        clientKey: args.clientKey,
+        ...values,
+      });
+    return view({ ...(existing ?? {}), ...values });
+  },
+});
+
+/**
+ * Migrates the pilot's old managed-storage default to the Google Drive default.
+ * This is safe to call on every app launch and intentionally never alters a
+ * user's Drive connection state or credentials.
+ */
+export const ensureGoogleDriveDefault = mutation({
+  args: { clientKey: v.string() },
+  returns: policyValidator,
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('storagePolicies')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
+      .unique();
+    const values = {
+      internalTestPlan: 'freeDrive' as const,
+      activeBackend: 'googleDrive' as const,
+      driveConnectionState:
+        existing?.driveConnectionState ?? ('notConnected' as const),
+      updatedAt: Date.now(),
+    };
     if (existing) await ctx.db.patch(existing._id, values);
     else
       await ctx.db.insert('storagePolicies', {
