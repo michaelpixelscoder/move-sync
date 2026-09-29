@@ -79,6 +79,7 @@
     "test:android": "node scripts/android-emulator-smoke.mjs",
     "screenshots": "playwright test e2e/landing.spec.ts",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "purge:convex-media": "node scripts/purge-convex-media.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
