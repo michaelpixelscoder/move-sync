@@ -24,6 +24,7 @@ import {
 } from '../components/PlayerActionMenu';
 import { PlaylistPicker } from '../../playlists/components/PlaylistPicker';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { EventPicker } from '../../events/components/EventPicker';
 
 export function PlayerScreen({
   clientKey,
@@ -45,6 +46,7 @@ export function PlayerScreen({
   const [actionsVisible, setActionsVisible] = useState(false);
   const [confirmCloudRemoval, setConfirmCloudRemoval] = useState(false);
   const [playlistPickerVisible, setPlaylistPickerVisible] = useState(false);
+  const [eventPickerVisible, setEventPickerVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [firstFrameReady, setFirstFrameReady] = useState(false);
@@ -237,6 +239,10 @@ export function PlayerScreen({
           setActionsVisible(false);
           setPlaylistPickerVisible(true);
         }}
+        onLinkToEvent={() => {
+          setActionsVisible(false);
+          setEventPickerVisible(true);
+        }}
         onRemoveLocal={() => void localAction?.()}
         onDeleteCloud={() => {
           setActionsVisible(false);
@@ -256,6 +262,12 @@ export function PlayerScreen({
         mediaIds={[media._id]}
         visible={playlistPickerVisible}
         onClose={() => setPlaylistPickerVisible(false)}
+      />
+      <EventPicker
+        clientKey={clientKey}
+        mediaId={media._id}
+        visible={eventPickerVisible}
+        onClose={() => setEventPickerVisible(false)}
       />
     </View>
   );

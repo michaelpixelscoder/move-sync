@@ -295,6 +295,15 @@ async function removePlaylistMemberships(
     );
   for (const membership of memberships) await ctx.db.delete(membership._id);
 }
+async function removeEventLinks(ctx: MutationCtx, mediaId: Id<'media'>) {
+  const links = await ctx.db
+    .query('eventMedia')
+    .withIndex('by_media_id', (q) => q.eq('mediaId', mediaId))
+    .take(101);
+  if (links.length > 100)
+    throw new ConvexError('Video has too many event links to delete safely');
+  for (const link of links) await ctx.db.delete(link._id);
+}
 async function requireOwnedCollection(
   ctx: Ctx,
   id: Id<'collections'>,
@@ -401,8 +410,7 @@ function validateMetadata(args: {
 async function setActivity(
   ctx: MutationCtx,
   media:
-    | Doc<'media'>
-    | { _id: Id<'media'>; clientKey: string; filename: string },
+    Doc<'media'> | { _id: Id<'media'>; clientKey: string; filename: string },
   values: {
     state: 'waiting' | 'uploading' | 'completed' | 'failed';
     progress: number;
@@ -1363,6 +1371,7 @@ export const remove = mutation({
       .take(2);
     for (const object of objects) await ctx.db.delete(object._id);
     await removePlaylistMemberships(ctx, media._id);
+    await removeEventLinks(ctx, media._id);
     await ctx.db.delete(media._id);
     await updateSummary(ctx, args.clientKey, media);
     return null;
@@ -1400,6 +1409,7 @@ export const removeMany = mutation({
         .take(2);
       for (const object of objects) await ctx.db.delete(object._id);
       await removePlaylistMemberships(ctx, media._id);
+      await removeEventLinks(ctx, media._id);
       await ctx.db.delete(media._id);
       await updateSummary(ctx, args.clientKey, media);
       outcomes.push({ id, removed: true, error: null });

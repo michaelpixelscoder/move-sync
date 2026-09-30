@@ -14,13 +14,15 @@ describe('Move Sync backend', () => {
   let t: AuthenticatedTestBackend;
   let unauthenticated: TestBackend;
   let otherUser: AuthenticatedTestBackend;
+  let ownerUserId: string;
   beforeEach(async () => {
     const base = convexTest(schema, modules);
     unauthenticated = base;
-    const [ownerUserId, otherUserId] = await base.run(async (ctx) => [
+    const [createdOwnerUserId, otherUserId] = await base.run(async (ctx) => [
       await ctx.db.insert('users', { email: 'owner@example.test' }),
       await ctx.db.insert('users', { email: 'other@example.test' }),
     ]);
+    ownerUserId = createdOwnerUserId;
     t = base.withIdentity({ subject: ownerUserId });
     otherUser = base.withIdentity({ subject: otherUserId });
     await t.mutation(api.libraries.claimCurrent, { clientKey: ownerKey });
@@ -70,6 +72,117 @@ describe('Move Sync backend', () => {
         clientKey: claimKey,
       }),
     ).toBeNull();
+  });
+
+  it('keeps event editions moderated and event-media links private', async () => {
+    const draft = await t.mutation(api.events.submit, {
+      name: 'Paris Kizomba Festival',
+      city: 'Paris',
+      country: 'France',
+      venue: 'Le Palais',
+      startsAt: 1_778_716_800_000,
+      endsAt: 1_778_976_000_000,
+      styles: ['Kizomba'],
+      websiteUrl: 'https://paris-kizomba.example.test',
+      description: 'A community-submitted edition.',
+    });
+    expect(draft.status).toBe('draft');
+    expect(
+      await otherUser.query(api.events.search, { query: 'Paris' }),
+    ).toEqual([]);
+
+    await t.run(async (ctx) =>
+      ctx.db.insert('eventModerators', {
+        userId: ownerUserId as any,
+        grantedAt: Date.now(),
+      }),
+    );
+    const published = await t.mutation(api.events.publish, {
+      eventId: draft._id,
+    });
+    expect(published.status).toBe('published');
+    expect(
+      (await otherUser.query(api.events.search, { query: 'Paris' })).map(
+        (event) => event._id,
+      ),
+    ).toContain(draft._id);
+    expect(
+      (
+        await otherUser.query(api.events.search, {
+          from: 1_778_716_800_000,
+          to: 1_778_716_800_000,
+        })
+      ).map((event) => event._id),
+    ).toContain(draft._id);
+
+    const secondEdition = await t.mutation(api.events.submit, {
+      name: 'Paris Kizomba Festival',
+      city: 'Paris',
+      country: 'France',
+      startsAt: 1_810_252_800_000,
+      endsAt: 1_810_512_000_000,
+      styles: ['Kizomba'],
+    });
+    await t.mutation(api.events.publish, { eventId: secondEdition._id });
+    expect(secondEdition._id).not.toBe(draft._id);
+
+    const mediaId = await t.mutation(api.media.enqueue, {
+      clientKey: ownerKey,
+      localAssetId: 'paris-private-video',
+      filename: 'private-class-recap.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 12,
+      durationMs: 1_000,
+      createdAt: 1_778_716_800_000,
+    });
+    await t.mutation(api.events.linkMedia, {
+      clientKey: ownerKey,
+      mediaId,
+      eventId: draft._id,
+    });
+    expect(
+      (
+        await t.query(api.events.listForMedia, { clientKey: ownerKey, mediaId })
+      ).map((event) => event._id),
+    ).toContain(draft._id);
+    await expect(
+      otherUser.query(api.events.listLinkedMedia, {
+        clientKey: ownerKey,
+        eventId: draft._id,
+      }),
+    ).rejects.toThrow(/access denied/i);
+
+    const requested = await otherUser.mutation(api.events.requestClaim, {
+      eventId: draft._id,
+      evidence: 'https://organiser.example.test/about',
+    });
+    const approved = await t.mutation(api.events.decideClaim, {
+      claimId: requested._id,
+      approved: true,
+      note: 'Verified against the official event website.',
+    });
+    expect(approved.status).toBe('approved');
+    await otherUser.mutation(api.events.updateOfficial, {
+      eventId: draft._id,
+      event: {
+        name: 'Paris Kizomba Festival',
+        city: 'Paris',
+        country: 'France',
+        startsAt: 1_778_716_800_000,
+        endsAt: 1_778_976_000_000,
+        styles: ['Kizomba', 'Semba'],
+      },
+    });
+    const audit = await t.query(api.events.listAudit, { eventId: draft._id });
+    expect(audit.map((entry) => entry.action)).toEqual(
+      expect.arrayContaining([
+        'submitted',
+        'published',
+        'claimRequested',
+        'claimApproved',
+        'officialDetailsUpdated',
+      ]),
+    );
   });
 
   it('drives a media item through queued to synced with authoritative storage metadata', async () => {

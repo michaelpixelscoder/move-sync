@@ -14,6 +14,7 @@ export const productCopy = {
   navigation: {
     videos: 'Videos',
     collections: 'Playlists',
+    events: 'Events',
     backup: 'Backup',
     settings: 'Settings',
   },

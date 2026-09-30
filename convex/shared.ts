@@ -20,6 +20,45 @@ export const activityStateValidator = v.union(
   v.literal('completed'),
   v.literal('failed'),
 );
+export const eventStatusValidator = v.union(
+  v.literal('draft'),
+  v.literal('published'),
+  v.literal('rejected'),
+  v.literal('merged'),
+);
+export const eventClaimStatusValidator = v.union(
+  v.literal('pending'),
+  v.literal('approved'),
+  v.literal('rejected'),
+  v.literal('withdrawn'),
+);
+export const eventEditionValidator = v.object({
+  _id: v.id('eventEditions'),
+  _creationTime: v.number(),
+  name: v.string(),
+  city: v.string(),
+  country: v.string(),
+  venue: v.union(v.string(), v.null()),
+  startsAt: v.number(),
+  endsAt: v.number(),
+  styles: v.array(v.string()),
+  websiteUrl: v.union(v.string(), v.null()),
+  description: v.union(v.string(), v.null()),
+  status: eventStatusValidator,
+  publishedAt: v.union(v.number(), v.null()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+export const eventClaimValidator = v.object({
+  _id: v.id('eventClaims'),
+  _creationTime: v.number(),
+  eventId: v.id('eventEditions'),
+  evidence: v.string(),
+  status: eventClaimStatusValidator,
+  requestedAt: v.number(),
+  decidedAt: v.union(v.number(), v.null()),
+  decisionNote: v.union(v.string(), v.null()),
+});
 
 export const collectionValidator = v.object({
   _id: v.id('collections'),

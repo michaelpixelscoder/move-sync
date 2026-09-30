@@ -29,6 +29,30 @@ const driveConnectionState = v.union(
   v.literal('folderMissing'),
   v.literal('unavailable'),
 );
+const eventStatus = v.union(
+  v.literal('draft'),
+  v.literal('published'),
+  v.literal('rejected'),
+  v.literal('merged'),
+);
+const eventClaimStatus = v.union(
+  v.literal('pending'),
+  v.literal('approved'),
+  v.literal('rejected'),
+  v.literal('withdrawn'),
+);
+const eventAuditAction = v.union(
+  v.literal('submitted'),
+  v.literal('published'),
+  v.literal('rejected'),
+  v.literal('merged'),
+  v.literal('officialDetailsUpdated'),
+  v.literal('claimRequested'),
+  v.literal('claimApproved'),
+  v.literal('claimRejected'),
+  v.literal('mediaLinked'),
+  v.literal('mediaUnlinked'),
+);
 
 export default defineSchema({
   ...authTables,
@@ -40,6 +64,77 @@ export default defineSchema({
   })
     .index('by_client_key', ['clientKey'])
     .index('by_user_id', ['userId']),
+  // Moderators are provisioned operationally (for example from the Convex
+  // dashboard). There is deliberately no client mutation that grants this
+  // role, so a community member cannot promote themselves.
+  eventModerators: defineTable({
+    userId: v.id('users'),
+    grantedAt: v.number(),
+    grantedBy: v.optional(v.id('users')),
+  }).index('by_user_id', ['userId']),
+  // One row is one dated edition, never merely a recurring event name.
+  eventEditions: defineTable({
+    name: v.string(),
+    normalizedName: v.string(),
+    city: v.string(),
+    country: v.string(),
+    venue: v.optional(v.string()),
+    startsAt: v.number(),
+    endsAt: v.number(),
+    styles: v.array(v.string()),
+    websiteUrl: v.optional(v.string()),
+    description: v.optional(v.string()),
+    discoveryText: v.string(),
+    status: eventStatus,
+    submittedBy: v.id('users'),
+    publishedAt: v.optional(v.number()),
+    mergedIntoEventId: v.optional(v.id('eventEditions')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_status_and_starts_at', ['status', 'startsAt'])
+    .index('by_status_and_normalized_name', ['status', 'normalizedName'])
+    .index('by_submitted_by_and_created_at', ['submittedBy', 'createdAt'])
+    .index('by_merged_into_event_id', ['mergedIntoEventId'])
+    .searchIndex('search_discovery', {
+      searchField: 'discoveryText',
+      filterFields: ['status'],
+    }),
+  // Append-only records make moderation, merge, and claim decisions
+  // reviewable without revealing private media links to other users.
+  eventAudits: defineTable({
+    eventId: v.id('eventEditions'),
+    actorUserId: v.id('users'),
+    action: eventAuditAction,
+    details: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_event_id_and_created_at', ['eventId', 'createdAt'])
+    .index('by_actor_user_id_and_created_at', ['actorUserId', 'createdAt']),
+  eventClaims: defineTable({
+    eventId: v.id('eventEditions'),
+    claimantUserId: v.id('users'),
+    evidence: v.string(),
+    status: eventClaimStatus,
+    requestedAt: v.number(),
+    decidedAt: v.optional(v.number()),
+    decidedBy: v.optional(v.id('users')),
+    decisionNote: v.optional(v.string()),
+  })
+    .index('by_event_id_and_claimant_user_id', ['eventId', 'claimantUserId'])
+    .index('by_claimant_user_id_and_status', ['claimantUserId', 'status'])
+    .index('by_status_and_requested_at', ['status', 'requestedAt']),
+  // A link is scoped by clientKey, and no public event query ever joins this
+  // table. It therefore cannot disclose attendance, ownership, or media.
+  eventMedia: defineTable({
+    clientKey: v.string(),
+    eventId: v.id('eventEditions'),
+    mediaId: v.id('media'),
+    linkedAt: v.number(),
+  })
+    .index('by_client_key_and_event_id', ['clientKey', 'eventId'])
+    .index('by_client_key_and_media_id', ['clientKey', 'mediaId'])
+    .index('by_media_id', ['mediaId']),
   // The plan is held by the backend and selects an account-wide backend. It is
   // intentionally not accepted as a per-upload client argument.
   storagePolicies: defineTable({

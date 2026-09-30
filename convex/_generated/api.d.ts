@@ -18,6 +18,7 @@ import type * as driveActions from "../driveActions.js";
 import type * as driveClient from "../driveClient.js";
 import type * as driveCrypto from "../driveCrypto.js";
 import type * as driveInternals from "../driveInternals.js";
+import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as libraries from "../libraries.js";
 import type * as media from "../media.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   driveClient: typeof driveClient;
   driveCrypto: typeof driveCrypto;
   driveInternals: typeof driveInternals;
+  events: typeof events;
   http: typeof http;
   libraries: typeof libraries;
   media: typeof media;

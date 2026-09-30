@@ -42,6 +42,13 @@ export function AppNavigation({
       />
       <NavItem
         desktop
+        label={productCopy.navigation.events}
+        icon="calendar-outline"
+        active={screen.name === 'events'}
+        onPress={() => onNavigate({ name: 'events' })}
+      />
+      <NavItem
+        desktop
         label={productCopy.navigation.backup}
         icon="cloud-upload-outline"
         active={screen.name === 'backup'}
@@ -64,6 +71,13 @@ export function AppNavigation({
         icon="list-outline"
         active={screen.name === 'playlists' || screen.name === 'playlist'}
         onPress={() => onNavigate({ name: 'playlists' })}
+      />
+      <NavItem
+        desktop={false}
+        label={productCopy.navigation.events}
+        icon="calendar-outline"
+        active={screen.name === 'events'}
+        onPress={() => onNavigate({ name: 'events' })}
       />
       <NavItem
         desktop={false}
@@ -170,6 +184,7 @@ function NavItem({
   icon:
     | 'videocam-outline'
     | 'list-outline'
+    | 'calendar-outline'
     | 'cloud-upload-outline'
     | 'settings-outline';
   active: boolean;
