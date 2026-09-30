@@ -184,6 +184,44 @@ describe('Move Sync backend', () => {
     ).toContainEqual(expect.objectContaining({ _id: mediaId }));
   });
 
+  it('records a direct Google Drive upload without allocating Convex Storage', async () => {
+    await t.run(async (ctx) => {
+      await ctx.db.insert('storagePolicies', {
+        clientKey: ownerKey,
+        internalTestPlan: 'freeDrive',
+        activeBackend: 'googleDrive',
+        driveConnectionState: 'connected',
+        updatedAt: 1,
+      });
+    });
+    const id = await t.mutation(api.media.enqueue, {
+      clientKey: ownerKey,
+      localAssetId: 'direct-drive-video',
+      filename: 'direct.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 99,
+      durationMs: 1_000,
+      createdAt: 1,
+    });
+    await t.mutation(api.media.beginDriveUpload, { clientKey: ownerKey, id });
+    await t.mutation(api.media.completeDriveUpload, {
+      clientKey: ownerKey,
+      id,
+      providerObjectRef: 'drive-file-id',
+      sizeBytes: 99,
+    });
+    const result = await t.query(api.media.getById, {
+      clientKey: ownerKey,
+      id,
+    });
+    expect(result).toMatchObject({
+      transferState: 'synced',
+      videoUrl: null,
+      thumbnailUrl: null,
+    });
+    expect(result.storage.cloudAvailable).toBe(true);
+  });
+
   it('reconciles truthful device collections and protects AutoSync ownership', async () => {
     const [camera] = await t.mutation(api.collections.reconcile, {
       clientKey: ownerKey,

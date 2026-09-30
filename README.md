@@ -15,14 +15,16 @@ move-sync/
 
 Each area has its own guide and template. Use lowercase kebab-case names so folders and files remain easy to search and automate.
 
-## Direct Google Drive playback
+## Direct Google Drive transfer and playback
 
-Drive-backed videos play directly from Google Drive; their media bytes do not
-pass through Convex. The account connection in Settings is the single Google
-OAuth grant used for uploads and playback. The server refreshes that grant and
-returns a short-lived token only to the signed-in library owner. On web, a
+Drive-backed videos upload and play directly between the app and Google Drive;
+their media bytes and thumbnails never pass through Convex. The account
+connection in Settings is the single Google OAuth grant used for uploads and
+playback. The server refreshes that grant and returns a short-lived token only
+to the signed-in library owner. Uploads use Drive's resumable-upload endpoint,
+then record only the resulting Drive file ID and metadata in Convex. On web, a
 service worker forwards the video element's byte-range requests directly to
-Drive with that token; no video bytes pass through Convex.
+Drive with that token.
 
 - A **story** records what happened or what was observed. It should distinguish evidence from interpretation.
 - A **thought** explores what something could mean, how a problem might be solved, or what might happen next.

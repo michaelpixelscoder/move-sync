@@ -23,9 +23,37 @@ does not proxy media or put a token in a URL. Check `capabilities.canDownload`
 before starting playback. Link-shared files can also need the resource key in
 the `X-Goog-Drive-Resource-Keys` header.
 
+## Direct uploads
+
+Video backup uses Drive's documented resumable-upload endpoint directly from
+the app:
+
+```text
+POST https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable
+Authorization: Bearer {short-lived access token}
+X-Upload-Content-Type: video/mp4
+X-Upload-Content-Length: {bytes}
+
+{ "name": "video.mp4", "parents": ["{Move Sync folder ID}"] }
+
+PUT {Location response header}
+Authorization: Bearer {short-lived access token}
+Content-Type: video/mp4
+
+{video bytes}
+```
+
+Convex only refreshes and returns the short-lived access token, and receives
+the completed Drive file ID and metadata. It does not allocate a Convex upload
+URL, receive the video, generate a thumbnail, or copy video data to Drive. If
+Drive rejects the credential, the app forces a credential refresh and retries
+the resumable transfer once; an invalid refresh grant presents the user with a
+clear reconnect-to-Google-Drive message.
+
 Official references:
 
 - [Download and export files](https://developers.google.com/workspace/drive/api/guides/manage-downloads)
+- [Perform a resumable upload](https://developers.google.com/workspace/drive/api/guides/manage-uploads#resumable)
 - [Files resource: `webContentLink`, `webViewLink`, and `capabilities`](https://developers.google.com/workspace/drive/api/reference/rest/v3/files)
 - [Resource keys for link-shared files](https://developers.google.com/workspace/drive/api/guides/resource-keys)
 

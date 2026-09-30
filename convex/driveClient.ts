@@ -5,7 +5,7 @@ import { internal } from './_generated/api';
 import { decryptDriveToken } from './driveCrypto';
 
 export const getUploadSession = action({
-  args: { clientKey: v.string() },
+  args: { clientKey: v.string(), forceRefresh: v.optional(v.boolean()) },
   returns: v.object({
     accessToken: v.string(),
     folderId: v.string(),
@@ -31,7 +31,7 @@ export const getUploadSession = action({
       ? await decryptDriveToken(session.encryptedAccessToken)
       : null;
     let expiresAt = session.accessTokenExpiresAt ?? 0;
-    if (!token || expiresAt < Date.now() + 30_000) {
+    if (args.forceRefresh || !token || expiresAt < Date.now() + 30_000) {
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

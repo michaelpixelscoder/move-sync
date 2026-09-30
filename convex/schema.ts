@@ -59,8 +59,8 @@ export default defineSchema({
     driveError: v.optional(v.string()),
     updatedAt: v.number(),
   }).index('by_client_key', ['clientKey']),
-  // OAuth state and credentials are kept server-side. The browser only ever
-  // receives a short-lived, single-use state value and a Google redirect URL.
+  // OAuth state and refresh credentials are kept server-side. The app receives
+  // a short-lived Drive access token solely to send media directly to Drive.
   driveOAuthStates: defineTable({
     clientKey: v.string(),
     userId: v.id('users'),

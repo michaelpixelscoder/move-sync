@@ -884,9 +884,9 @@ export const generateUploadUrl = mutation({
         throw new ConvexError(
           'Google Drive is not connected. Sync is paused and will not fall back to managed storage.',
         );
-      // Uploads are staged privately in Convex, then copied by an internal
-      // action using the server-held Drive credential. The client never sees a
-      // Drive access token or provider object ID.
+      throw new ConvexError(
+        'Google Drive uploads go directly from this device to Google Drive. Convex upload URLs are only for managed storage.',
+      );
     }
     if (args.id) {
       const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
@@ -914,6 +914,52 @@ export const generateUploadUrl = mutation({
       });
     }
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Marks a direct-to-Drive transfer as active without ever allocating Convex Storage. */
+export const beginDriveUpload = mutation({
+  args: { clientKey: v.string(), id: v.id('media') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
+    const policy = await ctx.db
+      .query('storagePolicies')
+      .withIndex('by_client_key', (q) => q.eq('clientKey', args.clientKey))
+      .unique();
+    if (
+      policy?.activeBackend !== 'googleDrive' ||
+      policy.driveConnectionState !== 'connected'
+    )
+      throw new ConvexError(
+        'Google Drive is not connected. Connect it before uploading videos.',
+      );
+    if (storageOf(media).cloudAvailable)
+      throw new ConvexError('Media is already backed up');
+    const now = Date.now();
+    const next = {
+      ...media,
+      activeBackend: 'googleDrive' as const,
+      state: 'uploading' as const,
+      transferState: 'uploading' as const,
+      syncError: undefined,
+      updatedAt: now,
+    };
+    await ctx.db.patch(media._id, {
+      activeBackend: 'googleDrive',
+      state: 'uploading',
+      transferState: 'uploading',
+      syncError: undefined,
+      updatedAt: now,
+    });
+    await updateSummary(ctx, args.clientKey, media, next);
+    await setActivity(ctx, media, {
+      state: 'uploading',
+      progress: 0,
+      startedAt: now,
+    });
+    return null;
   },
 });
 
@@ -1147,7 +1193,8 @@ export const completeDriveTransfer = internalMutation({
       updatedAt: now,
     };
     if (driveObject) await ctx.db.patch(driveObject._id, driveValues);
-    else await ctx.db.insert('storageObjects', { ...driveValues, createdAt: now });
+    else
+      await ctx.db.insert('storageObjects', { ...driveValues, createdAt: now });
     const stagedObjects = await ctx.db
       .query('storageObjects')
       .withIndex('by_media_id_and_backend', (q) =>
@@ -1156,7 +1203,8 @@ export const completeDriveTransfer = internalMutation({
       .take(10);
     for (const object of stagedObjects) await ctx.db.delete(object._id);
     if (media.storageId) await ctx.storage.delete(media.storageId);
-    if (media.thumbnailStorageId) await ctx.storage.delete(media.thumbnailStorageId);
+    if (media.thumbnailStorageId)
+      await ctx.storage.delete(media.thumbnailStorageId);
     await ctx.db.patch(media._id, next);
     await updateSummary(ctx, args.clientKey, media, next);
     await setActivity(ctx, media, {
@@ -1236,6 +1284,8 @@ export const completeDriveUpload = mutation({
   returns: v.id('media'),
   handler: async (ctx, args) => {
     assertClientKey(args.clientKey);
+    assertNonEmpty(args.providerObjectRef, 'providerObjectRef');
+    assertFiniteNonNegative(args.sizeBytes, 'sizeBytes');
     const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
     const policy = await ctx.db
       .query('storagePolicies')
@@ -1250,6 +1300,8 @@ export const completeDriveUpload = mutation({
     const next = {
       ...media,
       activeBackend: 'googleDrive' as const,
+      storageId: undefined,
+      thumbnailStorageId: undefined,
       sizeBytes: args.sizeBytes,
       state: 'synced' as const,
       transferState: 'synced' as const,
@@ -1259,6 +1311,8 @@ export const completeDriveUpload = mutation({
     };
     await ctx.db.patch(media._id, {
       activeBackend: 'googleDrive',
+      storageId: undefined,
+      thumbnailStorageId: undefined,
       sizeBytes: args.sizeBytes,
       state: 'synced',
       transferState: 'synced',
@@ -1283,6 +1337,16 @@ export const completeDriveUpload = mutation({
     };
     if (object) await ctx.db.patch(object._id, values);
     else await ctx.db.insert('storageObjects', { ...values, createdAt: now });
+    const stagedObject = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'convex'),
+      )
+      .unique();
+    if (stagedObject) await ctx.db.delete(stagedObject._id);
+    if (media.storageId) await ctx.storage.delete(media.storageId);
+    if (media.thumbnailStorageId)
+      await ctx.storage.delete(media.thumbnailStorageId);
     await updateSummary(ctx, args.clientKey, media, next);
     await setActivity(ctx, media, {
       state: 'completed',
