@@ -1,5 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import {
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -104,11 +105,13 @@ export function StatusRow({
   label,
   value,
   tone = 'default',
+  onPress,
 }: {
   icon?: ReactNode;
   label: string;
   value: string;
   tone?: 'default' | 'accent' | 'success' | 'warning' | 'danger';
+  onPress?: () => void;
 }) {
   const color =
     tone === 'success'
@@ -120,7 +123,7 @@ export function StatusRow({
           : tone === 'accent'
             ? theme.color.accent
             : theme.color.textSecondary;
-  return (
+  const content = (
     <View style={styles.statusRow}>
       {icon ? <View>{icon}</View> : null}
       <Text style={styles.statusLabel}>{label}</Text>
@@ -128,6 +131,18 @@ export function StatusRow({
         {value}
       </Text>
     </View>
+  );
+  return onPress ? (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${label}: ${value}`}
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.statusRowPressed}
+    >
+      {content}
+    </Pressable>
+  ) : (
+    content
   );
 }
 const styles = StyleSheet.create({
@@ -180,4 +195,5 @@ const styles = StyleSheet.create({
   },
   statusLabel: { ...textStyles.meta, flex: 1 },
   statusValue: { ...textStyles.status, maxWidth: '55%', textAlign: 'right' },
+  statusRowPressed: { backgroundColor: theme.color.surfacePressed },
 });

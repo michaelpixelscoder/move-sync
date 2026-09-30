@@ -1,4 +1,11 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { MediaRecord } from '../../../types/domain';
 import { theme, textStyles } from '../../../theme/tokens';
@@ -8,6 +15,8 @@ import {
   DetailPanel,
   StatusRow,
 } from '../../../components/layout/PagePrimitives';
+import { useEffect, useState } from 'react';
+import * as MediaLibrary from 'expo-media-library';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 export function PlayerInspector({
@@ -25,6 +34,26 @@ export function PlayerInspector({
     clientKey,
     mediaId: item._id,
   });
+  const driveFileId = item.driveFileId;
+  const [deviceAvailable, setDeviceAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (
+      Platform.OS === 'web' ||
+      !item.localAssetId ||
+      item.localAssetId.startsWith('picked:') ||
+      item.localRemovedAt
+    ) {
+      setDeviceAvailable(false);
+      return;
+    }
+    let active = true;
+    void MediaLibrary.getAssetInfoAsync(item.localAssetId)
+      .then((asset) => active && setDeviceAvailable(Boolean(asset)))
+      .catch(() => active && setDeviceAvailable(false));
+    return () => {
+      active = false;
+    };
+  }, [item.localAssetId, item.localRemovedAt]);
   const rows = [
     ['folder-outline', 'Size', formatBytes(item.sizeBytes)],
     ['time-outline', 'Duration', formatDuration(item.durationMs)],
@@ -60,7 +89,7 @@ export function PlayerInspector({
         <StatusRow
           icon={
             <Ionicons
-              name="cloud-done-outline"
+              name={driveFileId ? 'logo-google' : 'cloud-done-outline'}
               size={19}
               color={
                 item.storage.cloudAvailable
@@ -69,32 +98,46 @@ export function PlayerInspector({
               }
             />
           }
-          label="Backed up to cloud"
+          label={driveFileId ? 'Google Drive backup' : 'Backed up to cloud'}
           value={
             item.storage.cloudAvailable
               ? storageStateLabel(item.storage.state)
               : 'Not backed up'
           }
           tone={item.storage.cloudAvailable ? 'success' : 'default'}
-        />
-        <StatusRow
-          icon={
-            <Ionicons
-              name="phone-portrait-outline"
-              size={19}
-              color={
-                item.storage.localAvailable
-                  ? theme.color.success
-                  : theme.color.textSecondary
-              }
-            />
+          onPress={
+            driveFileId
+              ? () =>
+                  void Linking.openURL(
+                    `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view`,
+                  )
+              : undefined
           }
-          label="On this device"
-          value={
-            item.storage.localAvailable ? 'Available locally' : 'Cloud only'
-          }
-          tone={item.storage.localAvailable ? 'success' : 'default'}
         />
+        {Platform.OS !== 'web' ? (
+          <StatusRow
+            icon={
+              <Ionicons
+                name="phone-portrait-outline"
+                size={19}
+                color={
+                  deviceAvailable
+                    ? theme.color.success
+                    : theme.color.textSecondary
+                }
+              />
+            }
+            label="On this device"
+            value={
+              deviceAvailable === null
+                ? 'Checking…'
+                : deviceAvailable
+                  ? 'Available locally'
+                  : 'Not available locally'
+            }
+            tone={deviceAvailable ? 'success' : 'default'}
+          />
+        ) : null}
         <StatusRow
           icon={
             <Ionicons

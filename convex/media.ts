@@ -2,7 +2,11 @@ import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
-import type { MutationCtx, QueryCtx } from './_generated/server';
+import {
+  internalMutation,
+  type MutationCtx,
+  type QueryCtx,
+} from './_generated/server';
 import {
   libraryMutation as mutation,
   libraryQuery as query,
@@ -91,12 +95,12 @@ function storageOf(media: SummaryMedia): {
   backedUpAt: number | null;
 } {
   const transferState = transferOf(media);
-  // A storage ID is written only by completeUpload, after the blob is verified.
-  // Treat it as authoritative even if an older duplicate-upload attempt left the
-  // legacy transfer state as `error`.
+  // Drive uploads are staged in Convex, but only a completed Drive transfer is
+  // a cloud backup. A staging storage ID must never make the UI report success.
   const cloudAvailable =
-    Boolean(media.storageId) ||
-    (media.activeBackend === 'googleDrive' && transferState === 'synced');
+    media.activeBackend === 'googleDrive'
+      ? transferState === 'synced'
+      : Boolean(media.storageId);
   const localAvailable = Boolean(media.localAssetId && !media.localRemovedAt);
   const safeToRemoveLocal = cloudAvailable && localAvailable;
   const state = cloudAvailable
@@ -988,6 +992,8 @@ export const completeUpload = mutation({
             .unique()
         : null;
     const now = Date.now();
+    const activeBackend = await activeBackendFor(ctx, args.clientKey);
+    const isDriveTransfer = activeBackend === 'googleDrive';
     const device = await currentDevice(
       ctx,
       args.clientKey,
@@ -1007,13 +1013,15 @@ export const completeUpload = mutation({
       width: args.width,
       height: args.height,
       deviceId: device?._id,
-      activeBackend: await activeBackendFor(ctx, args.clientKey),
+      activeBackend,
       storageId: args.storageId,
       thumbnailStorageId: args.thumbnailStorageId,
-      state: 'synced' as const,
-      transferState: 'synced' as const,
+      state: isDriveTransfer ? ('uploading' as const) : ('synced' as const),
+      transferState: isDriveTransfer
+        ? ('uploading' as const)
+        : ('synced' as const),
       syncError: undefined,
-      syncedAt: now,
+      syncedAt: isDriveTransfer ? undefined : now,
       localRemovedAt: undefined,
       updatedAt: now,
     };
@@ -1024,9 +1032,10 @@ export const completeUpload = mutation({
       await ctx.db.patch(existing._id, values);
       await updateSummary(ctx, args.clientKey, existing, next);
       await setActivity(ctx, existing, {
-        state: 'completed',
+        state: isDriveTransfer ? 'uploading' : 'completed',
         progress: 1,
-        completedAt: now,
+        startedAt: isDriveTransfer ? now : undefined,
+        completedAt: isDriveTransfer ? undefined : now,
       });
       if (device)
         await ctx.db.patch(device._id, { lastBackupAt: now, lastSeenAt: now });
@@ -1082,9 +1091,10 @@ export const completeUpload = mutation({
     });
     await updateSummary(ctx, args.clientKey, undefined, values);
     await setActivity(ctx, inserted, {
-      state: 'completed',
+      state: isDriveTransfer ? 'uploading' : 'completed',
       progress: 1,
-      completedAt: now,
+      startedAt: isDriveTransfer ? now : undefined,
+      completedAt: isDriveTransfer ? undefined : now,
     });
     if (device)
       await ctx.db.patch(device._id, { lastBackupAt: now, lastSeenAt: now });
@@ -1093,6 +1103,126 @@ export const completeUpload = mutation({
         mediaId: id,
       });
     return id;
+  },
+});
+
+/** Finalizes a staged upload only after Google Drive has accepted the file. */
+export const completeDriveTransfer = internalMutation({
+  args: {
+    mediaId: v.id('media'),
+    clientKey: v.string(),
+    providerObjectRef: v.string(),
+    sizeBytes: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (!media || media.clientKey !== args.clientKey) return null;
+    const now = Date.now();
+    const next = {
+      ...media,
+      activeBackend: 'googleDrive' as const,
+      storageId: undefined,
+      thumbnailStorageId: undefined,
+      sizeBytes: args.sizeBytes,
+      state: 'synced' as const,
+      transferState: 'synced' as const,
+      syncError: undefined,
+      syncedAt: now,
+      updatedAt: now,
+    };
+    const driveObject = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+      )
+      .unique();
+    const driveValues = {
+      clientKey: args.clientKey,
+      mediaId: media._id,
+      backend: 'googleDrive' as const,
+      providerObjectRef: args.providerObjectRef,
+      sizeBytes: args.sizeBytes,
+      state: 'available' as const,
+      updatedAt: now,
+    };
+    if (driveObject) await ctx.db.patch(driveObject._id, driveValues);
+    else await ctx.db.insert('storageObjects', { ...driveValues, createdAt: now });
+    const stagedObjects = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'convex'),
+      )
+      .take(10);
+    for (const object of stagedObjects) await ctx.db.delete(object._id);
+    if (media.storageId) await ctx.storage.delete(media.storageId);
+    if (media.thumbnailStorageId) await ctx.storage.delete(media.thumbnailStorageId);
+    await ctx.db.patch(media._id, next);
+    await updateSummary(ctx, args.clientKey, media, next);
+    await setActivity(ctx, media, {
+      state: 'completed',
+      progress: 1,
+      completedAt: now,
+    });
+    return null;
+  },
+});
+
+/** Records a failed Drive copy without claiming the staged upload is backed up. */
+export const failDriveTransfer = internalMutation({
+  args: { mediaId: v.id('media'), clientKey: v.string(), reason: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const media = await ctx.db.get(args.mediaId);
+    if (!media || media.clientKey !== args.clientKey) return null;
+    const now = Date.now();
+    const next = {
+      ...media,
+      state: 'error' as const,
+      transferState: 'error' as const,
+      syncError: args.reason,
+      updatedAt: now,
+    };
+    await ctx.db.patch(media._id, {
+      state: 'error',
+      transferState: 'error',
+      syncError: args.reason,
+      updatedAt: now,
+    });
+    await updateSummary(ctx, args.clientKey, media, next);
+    await setActivity(ctx, media, {
+      state: 'failed',
+      progress: 1,
+      error: args.reason,
+    });
+    return null;
+  },
+});
+
+/** Cleans legacy Convex staging files when their Drive copy already exists. */
+export const finalizeExistingDriveTransfer = mutation({
+  args: { clientKey: v.string(), id: v.id('media') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    assertClientKey(args.clientKey);
+    const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
+    if (media.activeBackend !== 'googleDrive')
+      throw new ConvexError('This video is not stored in Google Drive');
+    const driveObject = await ctx.db
+      .query('storageObjects')
+      .withIndex('by_media_id_and_backend', (q) =>
+        q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+      )
+      .unique();
+    if (!driveObject || driveObject.state !== 'available')
+      throw new ConvexError('The Google Drive copy is not available yet');
+    await ctx.scheduler.runAfter(0, internal.media.completeDriveTransfer, {
+      mediaId: media._id,
+      clientKey: args.clientKey,
+      providerObjectRef: driveObject.providerObjectRef,
+      sizeBytes: driveObject.sizeBytes,
+    });
+    return null;
   },
 });
 
@@ -1170,10 +1300,20 @@ export const markLocalRemoved = mutation({
     assertClientKey(args.clientKey);
     const media = await requireOwnedMedia(ctx, args.id, args.clientKey);
     const storage = storageOf(media);
+    const driveObject =
+      media.activeBackend === 'googleDrive'
+        ? await ctx.db
+            .query('storageObjects')
+            .withIndex('by_media_id_and_backend', (q) =>
+              q.eq('mediaId', media._id).eq('backend', 'googleDrive'),
+            )
+            .unique()
+        : null;
     if (
       !storage.safeToRemoveLocal ||
-      !media.storageId ||
-      !(await ctx.db.system.get(media.storageId))
+      (media.activeBackend === 'googleDrive'
+        ? driveObject?.state !== 'available'
+        : !media.storageId || !(await ctx.db.system.get(media.storageId)))
     )
       throw new ConvexError(
         'A verified cloud copy is required before removing local storage',

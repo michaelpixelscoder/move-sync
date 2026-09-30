@@ -18,26 +18,11 @@ Each area has its own guide and template. Use lowercase kebab-case names so fold
 ## Direct Google Drive playback
 
 Drive-backed videos play directly from Google Drive; their media bytes do not
-pass through Convex. The app uses its own OAuth clients and the narrow
-`drive.file` scope, so the native and web clients must be registered in the
-same Google Cloud project that owns the Drive integration.
-
-Set these public build-time variables before building the app:
-
-```text
-EXPO_PUBLIC_GOOGLE_DRIVE_ANDROID_CLIENT_ID=...apps.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_DRIVE_IOS_CLIENT_ID=...apps.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_DRIVE_WEB_CLIENT_ID=...apps.googleusercontent.com
-```
-
-Register `app.movesync.mobile://drive-playback` as the native redirect URI and
-the deployed web `.../drive-playback` URL as the web redirect URI. Google must
-allow the corresponding Android package/signing certificate and iOS bundle ID.
-The native app keeps its refresh token in the device keychain and refreshes
-access automatically. The web app keeps only its short-lived access token in
-session storage and asks the user to reconnect when it expires or the browser
-session ends. On web, a service worker forwards the video element's byte-range
-requests directly to Drive with that token; no video bytes pass through Convex.
+pass through Convex. The account connection in Settings is the single Google
+OAuth grant used for uploads and playback. The server refreshes that grant and
+returns a short-lived token only to the signed-in library owner. On web, a
+service worker forwards the video element's byte-range requests directly to
+Drive with that token; no video bytes pass through Convex.
 
 - A **story** records what happened or what was observed. It should distinguish evidence from interpretation.
 - A **thought** explores what something could mean, how a problem might be solved, or what might happen next.

@@ -109,7 +109,7 @@ export function PlayerScreen({
     setDriveSource(null);
     setDriveStatus('loading');
     setDriveMessage(undefined);
-    void directDrivePlaybackSource(fileId)
+    void directDrivePlaybackSource(fileId, clientKey)
       .then((result) => {
         source = result;
         if (!current) return result.dispose();
@@ -126,8 +126,7 @@ export function PlayerScreen({
                 'Google Drive could not prepare this video. Sign in again to continue.',
               );
         setDriveStatus(
-          driveError.kind === 'configuration' ||
-            driveError.kind === 'unavailable'
+          driveError.kind === 'unavailable'
             ? driveError.kind
             : 'reconnect',
         );
@@ -137,7 +136,7 @@ export function PlayerScreen({
       current = false;
       source?.dispose();
     };
-  }, [driveReload, item?.driveFileId]);
+  }, [clientKey, driveReload, item?.driveFileId]);
   useEffect(() => {
     if (
       !item?.driveFileId ||
@@ -156,7 +155,7 @@ export function PlayerScreen({
     try {
       setDriveStatus('loading');
       setDriveMessage(undefined);
-      await connectGoogleDriveForPlayback();
+      await connectGoogleDriveForPlayback(clientKey);
       setDriveReload((value) => value + 1);
     } catch (value) {
       const message =

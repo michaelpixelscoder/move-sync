@@ -83,14 +83,14 @@ export const copyStagedMedia = internalAction({
       const file = (await uploaded.json()) as { id?: string; size?: string };
       if (!uploaded.ok || !file.id)
         throw new Error('Google Drive upload failed');
-      await ctx.runMutation(internal.driveInternals.completeTransfer, {
+      await ctx.runMutation(internal.media.completeDriveTransfer, {
         mediaId: args.mediaId,
         clientKey: details.clientKey,
         providerObjectRef: file.id,
         sizeBytes: Number(file.size ?? details.sizeBytes),
       });
     } catch (error) {
-      await ctx.runMutation(internal.driveInternals.failTransfer, {
+      await ctx.runMutation(internal.media.failDriveTransfer, {
         mediaId: args.mediaId,
         clientKey: details.clientKey,
         reason:

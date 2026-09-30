@@ -16,8 +16,10 @@ and explicitly supports the HTTP `Range` header. A native player can make
 progressive playback and seeks through this endpoint without routing media
 bytes through Convex, provided it can send the bearer token with each request.
 
-The app must obtain a Drive-authorized Google OAuth token from the user and
-refresh it before retrying a failed request. Check `capabilities.canDownload`
+The account connection in Settings grants Drive access once. The backend uses
+its encrypted refresh token to issue a short-lived playback token only to the
+authenticated owner; the player then sends that token directly to Drive. This
+does not proxy media or put a token in a URL. Check `capabilities.canDownload`
 before starting playback. Link-shared files can also need the resource key in
 the `X-Goog-Drive-Resource-Keys` header.
 
