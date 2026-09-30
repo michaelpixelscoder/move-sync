@@ -9,6 +9,7 @@ export function PlayerActionMenu({
   cloudActionLabel,
   onClose,
   onAddToPlaylist,
+  onLinkToEvent,
   onRemoveLocal,
   onDeleteCloud,
 }: {
@@ -18,6 +19,7 @@ export function PlayerActionMenu({
   cloudActionLabel: string;
   onClose: () => void;
   onAddToPlaylist: () => void;
+  onLinkToEvent: () => void;
   onRemoveLocal: () => void;
   onDeleteCloud: () => void;
 }) {
@@ -38,6 +40,13 @@ export function PlayerActionMenu({
               tone="secondary"
               disabled={busy}
               onPress={onAddToPlaylist}
+            />
+            <Button
+              label="Link to event"
+              icon="calendar-outline"
+              tone="secondary"
+              disabled={busy}
+              onPress={onLinkToEvent}
             />
             {canRemoveLocal ? (
               <Button

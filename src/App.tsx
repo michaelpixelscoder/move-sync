@@ -18,6 +18,7 @@ import { BackupScreen } from './features/autosync/screens/BackupScreen';
 import { PlaylistsScreen } from './features/playlists/screens/PlaylistsScreen';
 import { PlayerScreen } from './features/player/screens/PlayerScreen';
 import { SettingsScreen } from './features/settings/screens/SettingsScreen';
+import { EventsScreen } from './features/events/screens/EventsScreen';
 import { theme } from './theme/tokens';
 import { SignInScreen } from './features/auth/screens/SignInScreen';
 import { useLibraryClaim } from './hooks/useLibraryClaim';
@@ -181,6 +182,8 @@ function AuthenticatedApp({
       />
     ) : screen.name === 'backup' ? (
       <BackupScreen clientKey={clientKey} />
+    ) : screen.name === 'events' ? (
+      <EventsScreen clientKey={clientKey} />
     ) : screen.name === 'settings' ? (
       <SettingsScreen
         clientKey={clientKey}

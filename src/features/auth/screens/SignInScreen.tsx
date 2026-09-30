@@ -15,6 +15,35 @@ import { theme, textStyles } from '../../../theme/tokens';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const AUTH_START_TIMEOUT_MS = 15_000;
+
+async function startWithTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error('Google sign-in took too long to start.')),
+          AUTH_START_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+function localBackendIsUnreachableOnAndroid() {
+  if (Platform.OS !== 'android') return false;
+  try {
+    const hostname = new URL(process.env.EXPO_PUBLIC_CONVEX_URL ?? '').hostname;
+    return hostname === '127.0.0.1' || hostname === 'localhost';
+  } catch {
+    return false;
+  }
+}
+
 /** The pilot deliberately has one recoverable entry path. */
 export function SignInScreen() {
   const { signIn } = useAuthActions();
@@ -25,11 +54,18 @@ export function SignInScreen() {
     setBusy(true);
     setError(null);
     try {
+      if (localBackendIsUnreachableOnAndroid()) {
+        throw new Error(
+          'This Android build is pointing at a local backend. Connect it to a reachable Convex deployment, then rebuild the app.',
+        );
+      }
       const redirectTo =
         Platform.OS === 'web'
           ? globalThis.location.origin
           : makeRedirectUri({ scheme: 'move-sync' });
-      const { redirect } = await signIn('google', { redirectTo });
+      const { redirect } = await startWithTimeout(
+        signIn('google', { redirectTo }),
+      );
       if (!redirect) throw new Error('Google sign-in did not start.');
       if (Platform.OS === 'web') return;
       const result = await WebBrowser.openAuthSessionAsync(
@@ -41,9 +77,11 @@ export function SignInScreen() {
         if (!code) throw new Error('Google sign-in returned no code.');
         await signIn('google', { code });
       }
-    } catch {
+    } catch (value) {
       setError(
-        'Google sign-in did not finish. Check your connection and try again.',
+        value instanceof Error
+          ? value.message
+          : 'Google sign-in did not finish. Check your connection and try again.',
       );
     } finally {
       setBusy(false);

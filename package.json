@@ -80,6 +80,7 @@
     "screenshots": "playwright test e2e/landing.spec.ts",
     "seed:demo": "node scripts/seed-demo.mjs",
     "purge:convex-media": "node scripts/purge-convex-media.mjs",
+    "setup:auth-dev": "node scripts/setup-shared-auth-dev.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -99,5 +100,10 @@
       "protobufjs"
     ]
   },
-  "private": true
+  "private": true,
+  "allowScripts": {
+    "dtrace-provider@0.8.8": true,
+    "esbuild@0.27.0": true,
+    "protobufjs@7.6.6": true
+  }
 }

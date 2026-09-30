@@ -3,6 +3,7 @@ export type Screen =
   | { name: 'videos' }
   | { name: 'playlists' }
   | { name: 'playlist'; playlistId: Id<'playlists'> }
+  | { name: 'events' }
   | { name: 'backup' }
   | { name: 'settings' }
   | { name: 'player'; mediaId: Id<'media'> };

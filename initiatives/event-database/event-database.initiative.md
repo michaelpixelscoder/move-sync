@@ -1,9 +1,9 @@
 ---
 title: 'Event database and organiser claims'
-status: proposed
+status: active
 owner: michael
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 target_date: null
 budget: null
 related_thoughts: []
@@ -30,12 +30,12 @@ Dancers collect videos, class recaps, private-lesson notes, and competition reco
 
 ## 2. Completion criteria
 
-| Measure | Baseline | Target | Evidence source | Measurement window |
-| --- | --- | --- | --- | --- |
-| Event discovery | No event directory | Pilot users can find a seeded event by name, city, or date | Search acceptance test and pilot analytics | First two pilot weeks |
-| Community contribution | No submission route | A signed-in user can submit an event with a reviewable status | End-to-end acceptance test | Before pilot |
-| Trustworthy ownership | No organiser role | An organiser can request a claim and an administrator can approve or reject it with an audit record | Claim workflow test | Before pilot |
-| Personal organisation | Media has no event link | A library owner can link and unlink their media to an event without making the media public | Authorization and acceptance tests | Before pilot |
+| Measure                | Baseline                | Target                                                                                              | Evidence source                            | Measurement window    |
+| ---------------------- | ----------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------- |
+| Event discovery        | No event directory      | Pilot users can find a seeded event by name, city, or date                                          | Search acceptance test and pilot analytics | First two pilot weeks |
+| Community contribution | No submission route     | A signed-in user can submit an event with a reviewable status                                       | End-to-end acceptance test                 | Before pilot          |
+| Trustworthy ownership  | No organiser role       | An organiser can request a claim and an administrator can approve or reject it with an audit record | Claim workflow test                        | Before pilot          |
+| Personal organisation  | Media has no event link | A library owner can link and unlink their media to an event without making the media public         | Authorization and acceptance tests         | Before pilot          |
 
 All required completion criteria:
 
@@ -96,21 +96,21 @@ When a condition is met, pause new public submissions, reduce the directory to c
 
 ## 5. Selected solution
 
-- **Decision:** Not selected. Evaluate Option B against Option A through a small curated-and-community pilot.
-- **Decision needed:** Whether the added coverage from community submissions justifies the moderation and claims workflow.
+- **Decision:** Implement the narrow Option B evaluation: a moderated directory with private media links, community submissions, organiser claims, and an operationally provisioned moderator role.
+- **Decision needed:** Whether the added coverage from community submissions justifies the moderation and claims workflow after the two-week pilot.
 - **In scope for evaluation:** Event edition model, searchable directory, private media links, seeded records, community submission draft, manual moderation, organiser claim requests, and audit history.
 - **Out of scope:** Ticket sales, registration, schedules, public attendee lists, public media feeds, automatic event scraping, payments, and social matchmaking.
 
 ## 6. Implementation plan
 
-| Milestone or task | Result | Dependencies | Status | Completion check |
-| --- | --- | --- | --- | --- |
-| Define event and edition model | Fields and rules for name, dates, city, venue, styles, links, and edition identity | Product review | pending | Two editions of the same annual event can coexist without ambiguity |
-| Build curated directory prototype | Search and event detail view with seeded data | Event model | pending | A test user can find seeded events by name, city, and date |
-| Add private event-media association | Owners can attach, browse, and remove their own links | Library authorization | pending | Another account cannot view or modify the association |
-| Add submission and moderation queue | Community event drafts, duplicate report, publish/reject/merge actions | Moderator policy | pending | All changes have actor, timestamp, and source record |
-| Add organiser claims | Claim request, evidence field, approval/rejection, and verified organiser state | Moderator policy | pending | Only approved claimants can edit official fields |
-| Pilot and observe | Narrow cohort uses event discovery and private links | All preceding tasks | pending | Completion criteria are measured over two weeks |
+| Milestone or task                   | Result                                                                             | Dependencies          | Status    | Completion check                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------- | --------------------- | --------- | -------------------------------------------------------------------- |
+| Define event and edition model      | Fields and rules for name, dates, city, venue, styles, links, and edition identity | Product review        | completed | Two editions of the same annual event can coexist without ambiguity  |
+| Build curated directory prototype   | Search and event detail view with seeded data                                      | Event model           | completed | A test user can find published seeded events by name, city, and date |
+| Add private event-media association | Owners can attach, browse, and remove their own links                              | Library authorization | completed | Another account cannot view or modify the association                |
+| Add submission and moderation queue | Community event drafts, duplicate report, publish/reject/merge actions             | Moderator policy      | completed | All changes have actor, timestamp, and source record                 |
+| Add organiser claims                | Claim request, evidence field, approval/rejection, and verified organiser state    | Moderator policy      | completed | Only approved claimants can edit official fields                     |
+| Pilot and observe                   | Narrow cohort uses event discovery and private links                               | All preceding tasks   | pending   | Completion criteria are measured over two weeks                      |
 
 ## 7. Test instructions
 
@@ -163,11 +163,12 @@ For the first two-week pilot, measure directory searches, successful private med
 
 ## 9. Decision log
 
-| Date | Decision | Evidence and rationale |
-| --- | --- | --- |
-| 2026-09-29 | Initiative proposed | Events are a natural organising context for the target users' classes, social dancing, practices, and competition recordings. |
-| 2026-09-29 | Keep participant activity and media private by default | Event association is useful for personal retrieval without requiring public attendance or media sharing. |
-| 2026-09-29 | Evaluate manual moderation before open publishing | Community coverage must be balanced with duplicate prevention, accurate event information, and organiser trust. |
+| Date       | Decision                                               | Evidence and rationale                                                                                                              |
+| ---------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-29 | Initiative proposed                                    | Events are a natural organising context for the target users' classes, social dancing, practices, and competition recordings.       |
+| 2026-09-29 | Keep participant activity and media private by default | Event association is useful for personal retrieval without requiring public attendance or media sharing.                            |
+| 2026-09-29 | Evaluate manual moderation before open publishing      | Community coverage must be balanced with duplicate prevention, accurate event information, and organiser trust.                     |
+| 2026-09-30 | Start the moderated-directory implementation           | Moderators are provisioned operationally; no client route can grant roles. Public directory queries never join private media links. |
 
 ## 10. Closure
 
